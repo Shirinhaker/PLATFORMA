@@ -2,15 +2,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { BusinessProfile, BusinessProfilePatch } from "../api/types";
+import { directionActivities, initials } from "./business-profile-config";
+import { BusinessLocationPickerView } from "./BusinessLocationPickerView";
+import { BusinessProfileEditorForm } from "./BusinessProfileEditorForm";
 import {
-  BUSINESS_DIRECTIONS,
-  directionActivities,
-  initials,
-} from "./business-profile-config";
-import {
-  BusinessLocationPickerView,
-  type PicklocPoint,
-} from "./BusinessLocationPickerView";
+  IMAGE_TYPES,
+  MAX_IMAGE_BYTES,
+  PATCH_FIELDS,
+  errorText,
+  finite,
+  parseHours,
+  shopLink,
+  workHours,
+  type Hours,
+  type Point,
+} from "./BusinessProfileEditorShared";
 import "./BusinessProfileEditor.css";
 
 type EditorApi = Pick<
@@ -29,110 +35,6 @@ type Props = {
   onProfile: (profile: BusinessProfile) => void;
   onOpenOnline?: (view: "followers" | "following") => void;
 };
-
-type Hours = { from: string; to: string };
-type Point = PicklocPoint;
-
-type QrCtor = new (
-  element: HTMLElement,
-  options: {
-    text: string;
-    width: number;
-    height: number;
-    colorDark: string;
-    colorLight: string;
-  },
-) => unknown;
-
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const PATCH_FIELDS = [
-  "name",
-  "phone",
-  "description",
-  "public_username",
-  "direction",
-  "activity_type",
-  "address",
-  "latitude",
-  "longitude",
-  "pay_card",
-  "pay_holder",
-  "map_visible",
-] as const;
-
-function errorText(reason: unknown) {
-  return reason instanceof Error ? reason.message : "So‘rov bajarilmadi.";
-}
-
-function finite(value: number | null | undefined, fallback: number) {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
-function parseHours(value: Record<string, unknown>): Hours {
-  const from = String(value.from ?? value.start ?? value.open ?? "").slice(0, 5);
-  const to = String(value.to ?? value.end ?? value.close ?? "").slice(0, 5);
-  if (/^\d{2}:\d{2}$/.test(from) && /^\d{2}:\d{2}$/.test(to)) {
-    return { from, to };
-  }
-  const raw = String(value.raw ?? value.text ?? "");
-  const match = raw.match(/(\d{2}:\d{2})\D+(\d{2}:\d{2})/);
-  return { from: match?.[1] ?? "", to: match?.[2] ?? "" };
-}
-
-function workHours(existing: Record<string, unknown>, hours: Hours) {
-  if (!hours.from && !hours.to) return {};
-  return {
-    ...existing,
-    from: hours.from,
-    to: hours.to,
-    raw: `${hours.from}–${hours.to}`,
-  };
-}
-
-function shopLink(profile: BusinessProfile) {
-  const url = new URL(window.location.origin);
-  url.searchParams.set("shop", profile.public_username || String(profile.account_id));
-  return url.toString();
-}
-
-function mapUrl(point: Point) {
-  const bbox = [
-    point.longitude - 0.0075,
-    point.latitude - 0.0045,
-    point.longitude + 0.0075,
-    point.latitude + 0.0045,
-  ].join(",");
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${encodeURIComponent(`${point.latitude},${point.longitude}`)}`;
-}
-
-function QrCode({ value }: { value: string }) {
-  const root = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const node = root.current;
-    if (!node) return;
-    node.replaceChildren();
-    const QRCode = (window as unknown as { QRCode?: QrCtor }).QRCode;
-    if (!QRCode) {
-      node.textContent = "QR kod yuklanmadi";
-      return;
-    }
-    new QRCode(node, {
-      text: value,
-      width: 148,
-      height: 148,
-      colorDark: "#081c17",
-      colorLight: "#ffffff",
-    });
-  }, [value]);
-  return (
-    <div
-      ref={root}
-      className="business-profile-share__qr"
-      aria-label="Do‘kon QR kodi"
-    />
-  );
-}
 
 export function BusinessProfileEditorV2({
   api,
@@ -448,355 +350,35 @@ export function BusinessProfileEditorV2({
         />
       </section>
 
-      {draft.logo_object_key && (
-        <button
-          type="button"
-          className="business-profile-editor__adjust btn btn-outline btn-block"
-          onClick={() => setCrop((value) => !value)}
-        >
-          🖼 Rasm joylashuvini sozlash
-        </button>
-      )}
-      {crop && draft.logo_url && (
-        <section className="business-logo-crop avatar-crop-box">
-          <div className="business-logo-crop__stage avatar-crop-stage">
-            <img src={draft.logo_url} alt="Biznes rasmi" style={logoStyle} />
-          </div>
-          <label>
-            Gorizontal joylashuv
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={draft.logo_x}
-              onChange={(event) => field("logo_x", Number(event.currentTarget.value))}
-            />
-          </label>
-          <label>
-            Vertikal joylashuv
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={draft.logo_y}
-              onChange={(event) => field("logo_y", Number(event.currentTarget.value))}
-            />
-          </label>
-          <label>
-            Kattalashtirish
-            <input
-              type="range"
-              min="1"
-              max="3"
-              step="0.05"
-              value={draft.logo_zoom}
-              onChange={(event) =>
-                field("logo_zoom", Number(event.currentTarget.value))
-              }
-            />
-          </label>
-          <p className="idesc">
-            Rasmni barmoq bilan surib, ko‘rinadigan qismini belgilang.
-          </p>
-          <div className="avatar-crop-actions">
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() =>
-                setDraft((current) => ({
-                  ...current,
-                  logo_x: 50,
-                  logo_y: 50,
-                  logo_zoom: 1,
-                }))
-              }
-            >
-              Markazga
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={busy}
-              onClick={() => void saveCrop()}
-            >
-              Saqlash
-            </button>
-          </div>
-        </section>
-      )}
-
-      <form className="business-profile-form" onSubmit={save}>
-        <label className="field">
-          Biznes nomi
-          <input
-            className="input"
-            placeholder="Biznes nomi"
-            value={draft.name}
-            onChange={(event) => field("name", event.currentTarget.value)}
-          />
-        </label>
-        <label className="field">
-          Telefon raqami
-          <input
-            className="input"
-            type="tel"
-            placeholder="+998 __ ___ __ __"
-            value={draft.phone}
-            onChange={(event) => field("phone", event.currentTarget.value)}
-          />
-        </label>
-        <label className="field">
-          Qisqa tavsif
-          <textarea
-            className="textarea"
-            placeholder="Biznesingiz haqida qisqacha"
-            value={draft.description}
-            onChange={(event) => field("description", event.currentTarget.value)}
-          />
-        </label>
-        <label className="field">
-          Username (do'kon manzili)
-          <span className="business-profile-form__username">
-            <b>@</b>
-            <input
-              className="input"
-              placeholder="dokonanvar"
-              autoComplete="off"
-              value={draft.public_username}
-              onChange={(event) =>
-                field(
-                  "public_username",
-                  event.currentTarget.value
-                    .toLowerCase()
-                    .replace(/^@+/, "")
-                    .replace(/[^a-z0-9_]/g, ""),
-                )
-              }
-            />
-          </span>
-          <small className="idesc">
-            Kichik lotin harflari, raqam va _ (3–20 belgi). Mijozlar sizni shu nom
-            orqali oson topadi. Ixtiyoriy.
-          </small>
-        </label>
-
-        <section className="business-profile-share">
-          <strong>
-            🔗 <span>Do'kon havolasi</span>
-          </strong>
-          <p className="idesc">
-            Shu havola yoki QR orqali mijozlar to'g'ridan-to'g'ri do'koningizga o'tadi.
-          </p>
-          <div className="business-profile-share__row">
-            <input
-              className="input"
-              readOnly
-              value={link}
-              aria-label="Do'kon havolasi manzili"
-            />
-            <button type="button" className="mini-btn" onClick={() => void copyLink()}>
-              {copyText}
-            </button>
-          </div>
-          <QrCode value={link} />
-        </section>
-
-        <label className="field">
-          Faoliyat yo'nalishi
-          <select
-            className="input"
-            value={draft.direction}
-            onChange={(event) => {
-              const direction = event.currentTarget.value;
-              const activity_type = directionActivities(direction)[0] ?? "";
-              setSaved(false);
-              setDraft((current) => ({ ...current, direction, activity_type }));
-            }}
-          >
-            <option value="">Yo'nalishni tanlang</option>
-            {BUSINESS_DIRECTIONS.map((item) => (
-              <option value={item.name} key={item.name}>
-                {item.icon} {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          Faoliyat turi
-          <select
-            className="input"
-            value={draft.activity_type}
-            disabled={!draft.direction}
-            onChange={(event) => field("activity_type", event.currentTarget.value)}
-          >
-            {!activities.length && <option value="">Avval yo'nalishni tanlang</option>}
-            {activities.map((activity) => (
-              <option key={activity} value={activity}>
-                {activity}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <section className="business-profile-map field">
-          <strong>Xaritadagi joy</strong>
-          <button
-            type="button"
-            className="btn btn-outline btn-block"
-            onClick={() => setMapOpen(true)}
-          >
-            📍 Xaritada joy belgilash
-          </button>
-          {point ? (
-            <>
-              <span className="business-profile-map__status">✅ Joy belgilangan</span>
-              <iframe
-                title="Belgilangan joy xaritasi"
-                src={mapUrl(point)}
-                loading="lazy"
-              />
-            </>
-          ) : (
-            <>
-              <p className="idesc">Biznesingiz xaritada shu joyda ko'rinadi</p>
-              <p className="business-profile-map__warning">
-                ⚠️ Qidiruv va xaritada ko‘rinish uchun biznes joylashuvini xaritada
-                belgilang.
-              </p>
-            </>
-          )}
-        </section>
-
-        <section className="business-payment-section">
-          <header>
-            <strong>
-              💳 <span>To'lov ma'lumotlari</span>
-            </strong>
-            <p className="idesc">
-              Onlayn buyurtmada mijoz shu yerga to'laydi va chekni suhbatga tashlaydi.
-              Ixtiyoriy — to'ldirmasangiz onlayn to'lov ko'rsatilmaydi.
-            </p>
-          </header>
-          <label className="field">
-            To'lov kartasi raqami
-            <input
-              className="input"
-              inputMode="numeric"
-              placeholder="8600 XXXX XXXX XXXX"
-              value={draft.pay_card}
-              onChange={(event) => field("pay_card", event.currentTarget.value)}
-            />
-          </label>
-          <label className="field">
-            Karta egasi (ism-familiya)
-            <input
-              className="input"
-              placeholder="Masalan: Anvar Karimov"
-              value={draft.pay_holder}
-              onChange={(event) => field("pay_holder", event.currentTarget.value)}
-            />
-          </label>
-          <div className="business-payment-section__qr">
-            <strong>To'lov QR kodi (rasm)</strong>
-            <input
-              ref={paymentInput}
-              type="file"
-              hidden
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0];
-                event.currentTarget.value = "";
-                if (file) void uploadPaymentQr(file);
-              }}
-            />
-            <button
-              type="button"
-              className="btn btn-outline btn-block"
-              disabled={busy}
-              onClick={() => paymentInput.current?.click()}
-            >
-              📷 QR rasm yuklash
-            </button>
-            {draft.pay_qr_url && (
-              <div className="business-payment-section__preview">
-                <img src={draft.pay_qr_url} alt="To'lov QR kodi" />
-                <button
-                  type="button"
-                  aria-label="O'chirish"
-                  onClick={() =>
-                    api.attachBusinessPaymentQr &&
-                    void api
-                      .attachBusinessPaymentQr({ object_key: "" })
-                      .then(apply)
-                      .catch((reason) => setError(errorText(reason)))
-                  }
-                >
-                  ×
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <label className="field">
-          Ish vaqti
-          <span className="business-hours-row">
-            <input
-              className="input"
-              type="time"
-              aria-label="Ish boshlanish vaqti"
-              value={hours.from}
-              onChange={(event) => {
-                const from = event.currentTarget.value;
-                setSaved(false);
-                setHours((current) => ({ ...current, from }));
-              }}
-            />
-            <span>dan</span>
-            <input
-              className="input"
-              type="time"
-              aria-label="Ish tugash vaqti"
-              value={hours.to}
-              onChange={(event) => {
-                const to = event.currentTarget.value;
-                setSaved(false);
-                setHours((current) => ({ ...current, to }));
-              }}
-            />
-          </span>
-          <small className="idesc">Ish boshlanish va tugash vaqtini belgilang.</small>
-        </label>
-
-        {error && (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        )}
-        {saved && (
-          <p className="form-success" role="status">
-            Saqlandi
-          </p>
-        )}
-        <button
-          type="submit"
-          className="business-profile-form__save btn btn-primary btn-block"
-          disabled={busy}
-        >
-          {busy ? "Saqlanmoqda…" : "Saqlash"}
-        </button>
-      </form>
-
-      {lightbox && draft.logo_url && (
-        <button
-          type="button"
-          className="business-logo-lightbox"
-          aria-label="Kattalashtirilgan biznes rasmini yopish"
-          onClick={() => setLightbox(false)}
-        >
-          <img src={draft.logo_url} alt={draft.name} />
-        </button>
-      )}
+      <BusinessProfileEditorForm
+        api={api}
+        draft={draft}
+        hours={hours}
+        activities={activities}
+        point={point}
+        logoStyle={logoStyle}
+        paymentInput={paymentInput}
+        busy={busy}
+        error={error}
+        saved={saved}
+        crop={crop}
+        lightbox={lightbox}
+        link={link}
+        copyText={copyText}
+        field={field}
+        setDraft={setDraft}
+        setHours={setHours}
+        setSaved={setSaved}
+        setCrop={setCrop}
+        setMapOpen={setMapOpen}
+        setLightbox={setLightbox}
+        onSave={save}
+        onSaveCrop={saveCrop}
+        onCopyLink={copyLink}
+        onUploadPaymentQr={uploadPaymentQr}
+        onApply={apply}
+        onError={setError}
+      />
     </main>
   );
 }
