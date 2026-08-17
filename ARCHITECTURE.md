@@ -168,7 +168,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
 | `payments` | `/api/v1/payments` | 1 364 | to'lovlar, obunalar |
-| `admin` | `/api/v1/admin`, `/reports` | 2 789 | admin panel, moderatsiya, audit, hisobotlar |
+| `admin` | `/api/v1/admin`, `/reports` | 2 893 | admin panel, moderatsiya, audit, hisobotlar |
 
 ### Infratuzilma (biznes-mantiq emas)
 

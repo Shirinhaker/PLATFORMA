@@ -12,7 +12,7 @@ from app.admin.moderation import AdminModerationService
 from app.admin.payments_service import AdminPaymentService
 from app.admin.reports_router import router as reports_router
 from app.admin.reports_service import AdminReportsService
-from app.admin.router import router as admin_router
+from app.admin.router_parts import router as admin_router
 from app.admin.service import AdminAuthService
 from app.advertisements.authoring_router import (
     router as advertisement_authoring_router,
