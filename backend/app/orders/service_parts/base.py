@@ -10,7 +10,7 @@ import re
 from datetime import datetime
 from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
-from app.cash_register.service import CashRegisterService
+from app.cash_register.service_parts import CashRegisterService
 from app.catalog.model import CatalogItem
 from app.catalog.repository import build_content_public_id
 from app.core.errors import ApiError

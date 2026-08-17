@@ -18,7 +18,7 @@ from app.documents.schemas import (
     DocumentWrite,
     MutationRead,
 )
-from app.documents.service import DocumentService
+from app.documents.service_parts import DocumentService
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

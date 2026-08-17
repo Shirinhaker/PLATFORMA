@@ -28,7 +28,7 @@ from app.payments.model import (
     PlatformPrice,
 )
 from app.payments.schemas import PaymentReceipt, PaymentRequestCreate
-from app.payments.service import PaymentService
+from app.payments.service_parts import PaymentService
 from app.profiles.model import UserProfile
 
 NOW = datetime(2026, 8, 7, 12, 0, tzinfo=UTC)

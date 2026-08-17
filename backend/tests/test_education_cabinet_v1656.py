@@ -21,7 +21,7 @@ from app.cabinet_records.model import (
 )
 from app.core.errors import ApiError
 from app.db.base import Base
-from app.education.cabinet_service import EducationCabinetService
+from app.education.cabinet import EducationCabinetService
 from app.education.model import (
     EducationGroup,
     EducationStudent,

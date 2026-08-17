@@ -4,15 +4,18 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_business_online_service_stops_using_profile_json_as_primary_store():
-    # `service_relational.py` -> `service.py` deb nomlandi: relatsion yo'l
-    # asosiy, JSON yo'li esa `payload_service.py` da qoldi.
-    source = (ROOT / "app" / "business_online" / "service.py").read_text(
-        encoding="utf-8"
+    # Relatsion yo'l asosiy (`service_parts/`), JSON yo'li esa
+    # `payload/` paketida zaxira sifatida qoldi.
+    # Xizmat mixin'larga bo'lindi, shuning uchun butun paket o'qiladi —
+    # keyingi bo'lishlarda ham bu tekshiruv buzilmaydi.
+    package = ROOT / "app" / "business_online" / "service_parts"
+    source = "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted(package.rglob("*.py"))
     )
     main = (ROOT / "app" / "main.py").read_text(encoding="utf-8")
     assert "CabinetRecordRepository" in source
     assert "profile.cabinet_payload = payload" not in source
-    assert "from app.business_online.service import BusinessOnlineService" in main
+    assert "from app.business_online.service_parts import BusinessOnlineService" in main
     # Asosiy xizmat sifatida JSON yo'li ulanib qolmasligi kerak.
     assert "BusinessOnlinePayloadService" not in main
 

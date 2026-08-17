@@ -81,7 +81,9 @@ def test_story_upload_validation_rejects_spoofing_and_v1656_limits():
 
 
 def test_story_feed_rank_is_own_unseen_followed_nearest_newest():
-    service = _stories_module("service")
+    # `rank_story_groups` — modul darajasidagi yordamchi; xizmat
+    # mixin'larga bo'linganda u `helpers.py` ga tushdi.
+    service = _stories_module("service_parts.helpers")
     groups = [
         {
             "name": "newest",

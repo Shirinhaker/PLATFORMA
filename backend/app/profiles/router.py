@@ -17,7 +17,7 @@ from app.auth.dependencies import (
 from app.auth.repository import create_session, lock_session
 from app.auth.router import _set_session_cookie
 from app.auth.security import derive_csrf
-from app.business_online.service import (
+from app.business_online.service_parts import (
     RELATIONAL_EDUCATION_RESOURCES,
 )
 from app.cabinet_records.repository import CabinetRecordRepository

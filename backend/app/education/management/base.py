@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cash_register.repository import CashRegisterRepository
 from app.core.errors import ApiError
-from app.education.cabinet_service import EducationCabinetService
+from app.education.cabinet import EducationCabinetService
 from app.education.management.helpers import (
     EDUCATION_DIRECTIONS,
     NowProvider,

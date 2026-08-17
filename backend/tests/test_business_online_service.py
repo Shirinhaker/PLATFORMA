@@ -5,7 +5,7 @@ from copy import deepcopy
 
 import pytest
 
-from app.business_online.service import BusinessOnlineService
+from app.business_online.service_parts import BusinessOnlineService
 from app.profiles.model import BusinessProfile, UserProfile
 
 

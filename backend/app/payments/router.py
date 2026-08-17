@@ -16,7 +16,7 @@ from app.payments.schemas import (
     PaymentRequestRead,
     PaymentResubmit,
 )
-from app.payments.service import PaymentService
+from app.payments.service_parts import PaymentService
 
 router = APIRouter(prefix="/api/v1/payments", tags=["payments"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

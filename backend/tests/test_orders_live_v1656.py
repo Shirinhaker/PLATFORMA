@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.accounts.model import Account, AccountType
 from app.cabinet_records.model import CabinetRecord, CabinetRecordField, CabinetResource
 from app.cash_register.model import CashReceipt, CashReceiptCounter, CashReceiptLine
-from app.cash_register.service import CashRegisterService
+from app.cash_register.service_parts import CashRegisterService
 from app.catalog.model import CatalogGroup, CatalogItem
 from app.catalog.repository import build_content_public_id
 from app.core.errors import ApiError

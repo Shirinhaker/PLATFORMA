@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.account_settings.router import router as account_settings_router
 from app.account_settings.service import AccountSettingsService
-from app.admin.moderation_service import AdminModerationService
+from app.admin.moderation import AdminModerationService
 from app.admin.payments_service import AdminPaymentService
 from app.admin.reports_router import router as reports_router
 from app.admin.reports_service import AdminReportsService
@@ -27,12 +27,12 @@ from app.auth.router import router as auth_router
 from app.auth.shared_login import SharedLoginAuthService
 from app.auth.shared_login_router import router as shared_login_router
 from app.business_online.router import router as business_online_router
-from app.business_online.service import BusinessOnlineService
+from app.business_online.service_parts import BusinessOnlineService
 from app.business_opening.router import router as business_opening_router
 from app.business_opening.service import BusinessOpeningService
 from app.cache.client import RedisClient
 from app.cash_register.router import router as cash_register_router
-from app.cash_register.service import CashRegisterService
+from app.cash_register.service_parts import CashRegisterService
 from app.catalog.cache_epoch import CatalogCacheEpoch
 from app.catalog.router import router as catalog_router
 from app.catalog.service import CatalogService
@@ -46,7 +46,7 @@ from app.debt_ledger.service import DebtLedgerService
 from app.dining.router import router as dining_router
 from app.dining.service import DiningService
 from app.documents.router import router as documents_router
-from app.documents.service import DocumentService
+from app.documents.service_parts import DocumentService
 from app.education.management_service import EducationManagementService
 from app.education.router import router as education_router
 from app.education.service import EducationEnrollmentService
@@ -65,11 +65,11 @@ from app.media.storage import build_r2_storage
 from app.messages.router import router as messages_router
 from app.messages.service import MessageService
 from app.notifications.router import router as notifications_router
-from app.notifications.service import NotificationService
+from app.notifications.service_parts import NotificationService
 from app.orders.router import router as orders_router
 from app.orders.service import OrderService
 from app.payments.router import router as payments_router
-from app.payments.service import PaymentService
+from app.payments.service_parts import PaymentService
 from app.platform.router import router as platform_router
 from app.profiles.router import router as profiles_router
 from app.profiles.summary_service import ProfileSummaryService
@@ -82,11 +82,11 @@ from app.reviews.service import ReviewService
 from app.specialists.router import router as specialists_router
 from app.specialists.service import SpecialistService
 from app.staff.router import router as staff_router
-from app.staff.service import StaffService
+from app.staff.service_parts import StaffService
 from app.statistics.router import router as statistics_router
 from app.statistics.service import StatisticsService
 from app.stories.router import router as stories_router
-from app.stories.service import StoryService
+from app.stories.service_parts import StoryService
 from app.taxi.admin_router import router as taxi_admin_router
 from app.taxi.router import router as taxi_router
 from app.taxi.service import TaxiService

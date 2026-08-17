@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
 from app.listings.model import Listing
-from app.notifications.service import NotificationService
+from app.notifications.service_parts import NotificationService
 
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
