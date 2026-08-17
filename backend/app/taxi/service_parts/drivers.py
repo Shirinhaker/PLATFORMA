@@ -172,3 +172,25 @@ class DriversMixin(TaxiServiceBase):
             )
             await session.commit()
             return driver.id, driver.balance
+
+    @staticmethod
+    def _driver_read(
+        driver: TaxiDriver, profile: UserProfile | None, busy: bool
+    ) -> DriverRead:
+        return DriverRead(
+            exists=True,
+            id=driver.id,
+            name=profile.name if profile else "",
+            phone=driver.phone,
+            car_model=driver.car_model,
+            car_color=driver.car_color,
+            car_plate=driver.car_plate,
+            service=driver.service,
+            available=driver.available and not busy,
+            busy=busy,
+            rating_sum=driver.rating_sum,
+            rating_count=driver.rating_count,
+            balance=driver.balance,
+            commission=COMMISSION_PER_ORDER,
+            status=driver.status,
+        )

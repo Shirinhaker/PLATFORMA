@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
+from app.orders.model import Order
+from app.orders.notifications import append_order_notification
+from app.profiles.model import BusinessProfile, UserProfile
 from app.taxi.model import (
     ACTIVE_RIDE_STATUSES,
     DRIVER_ACTIVE_STATUSES,
@@ -17,12 +21,15 @@ from app.taxi.schemas import (
     MyRidesRead,
     RideAccepted,
     RideCreate,
+    RideDriver,
     RideMutationRead,
+    RidePerson,
     RideRead,
 )
 from app.taxi.service_parts.base import TaxiServiceBase
 from app.taxi.service_parts.helpers import (
     COMMISSION_PER_ORDER,
+    calculate_price,
 )
 
 
@@ -284,3 +291,155 @@ class RidesMixin(TaxiServiceBase):
             ride.updated_at = self._now()
             await session.commit()
             return await self._ride_read(session, ride, include_customer=True)
+
+    async def _sync_source_order(
+        self,
+        session: AsyncSession,
+        ride: TaxiRide,
+        ride_status: str,
+    ) -> None:
+        if ride.kind != "dostavka" or ride.source_order_id is None:
+            return
+        order = await session.scalar(
+            select(Order).where(Order.id == ride.source_order_id).with_for_update()
+        )
+        if order is None:
+            return
+        order_status = {
+            "accepted": "courier_assigned",
+            "arrived_store": "courier_arrived_store",
+            "pickup_requested": "handoff_waiting_seller",
+            "arrived_customer": "courier_arrived_customer",
+            "delivered_waiting_customer": "delivered_waiting_customer",
+        }.get(ride_status)
+        if order_status is None:
+            return
+        order.status = order_status
+        order.updated_at = self._now()
+        order.customer_seen_at = None
+        order.provider_seen_at = None
+        order.last_event = "delivery"
+        if ride_status == "accepted":
+            driver = (
+                await session.get(TaxiDriver, ride.driver_id)
+                if ride.driver_id
+                else None
+            )
+            profile = (
+                await session.get(UserProfile, driver.user_account_id)
+                if driver
+                else None
+            )
+            name = profile.name if profile else "Dostavkachi"
+            await append_order_notification(
+                session,
+                self._notifications,
+                order,
+                side="customer",
+                event="courier_assigned",
+                title="Dostavkachi buyurtmani qabul qildi",
+                body=name,
+            )
+            await append_order_notification(
+                session,
+                self._notifications,
+                order,
+                side="provider",
+                event="courier_assigned",
+                title="Dostavkachi biriktirildi",
+                body=name,
+            )
+        elif ride_status == "pickup_requested":
+            await append_order_notification(
+                session,
+                self._notifications,
+                order,
+                side="provider",
+                event="courier_pickup_requested",
+                title="Dostavkachi buyurtmani olishga tayyor",
+                body="Buyurtmani dostavkachiga topshiring.",
+                action_type="confirm_handoff",
+            )
+        elif ride_status == "arrived_customer":
+            await append_order_notification(
+                session,
+                self._notifications,
+                order,
+                side="customer",
+                event="courier_arrived",
+                title="Dostavkachi yetib keldi",
+                body="Buyurtmani qabul qilishga tayyorlaning.",
+            )
+        elif ride_status == "delivered_waiting_customer":
+            await append_order_notification(
+                session,
+                self._notifications,
+                order,
+                side="customer",
+                event="delivery_handed",
+                title="Buyurtma topshirildi",
+                body="Buyurtmani olganingizni tasdiqlang.",
+                action_type="confirm_received",
+            )
+
+    async def _ride_read(
+        self, session: AsyncSession, ride: TaxiRide, *, include_customer: bool = False
+    ) -> RideRead:
+        driver_payload = None
+        if ride.driver_id is not None:
+            driver = await session.get(TaxiDriver, ride.driver_id)
+            profile = (
+                await session.get(UserProfile, driver.user_account_id)
+                if driver
+                else None
+            )
+            if driver is not None:
+                driver_payload = RideDriver(
+                    name=profile.name if profile else "",
+                    phone=driver.phone,
+                    car_model=driver.car_model,
+                    car_color=driver.car_color,
+                    car_plate=driver.car_plate,
+                )
+        customer_payload = None
+        if include_customer:
+            profile = await session.get(UserProfile, ride.customer_account_id)
+            if profile is None:
+                profile = await session.get(BusinessProfile, ride.customer_account_id)
+            customer_payload = RidePerson(
+                name=profile.name if profile else "",
+                phone=profile.phone if profile else "",
+            )
+        return RideRead(
+            id=ride.id,
+            kind=ride.kind,
+            from_addr=ride.from_addr,
+            to_addr=ride.to_addr,
+            from_lat=ride.from_lat,
+            from_lng=ride.from_lng,
+            to_lat=ride.to_lat,
+            to_lng=ride.to_lng,
+            dist_km=ride.dist_km,
+            dur_min=ride.dur_min,
+            price=calculate_price(ride.kind, ride.dist_km),
+            meter_km=ride.meter_km,
+            final_price=calculate_price(ride.kind, ride.meter_km),
+            ozim=ride.ozim,
+            cargo=ride.cargo,
+            car_type=ride.car_type,
+            note=ride.note,
+            status=ride.status,
+            source_order_id=ride.source_order_id,
+            created_at=ride.created_at,
+            accepted_at=ride.accepted_at,
+            driver=driver_payload,
+            customer=customer_payload,
+            customer_name=customer_payload.name if customer_payload else "",
+        )
+
+    @staticmethod
+    async def _ride(session, ride_id: int, lock: bool = False):
+        statement = select(TaxiRide).where(TaxiRide.id == ride_id)
+        if lock:
+            statement = statement.with_for_update()
+        return await session.scalar(statement)

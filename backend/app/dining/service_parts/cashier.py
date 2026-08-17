@@ -6,8 +6,12 @@ yechiladi, chek yoziladi va qarz hisobga olinadi.
 
 from __future__ import annotations
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.cash_register.model import CashReceipt, CashReceiptLine
 from app.core.errors import ApiError
+from app.dining.model import DiningOrder
 from app.dining.schemas import (
     DiningCancel,
     DiningCashierItemsUpdate,
@@ -362,3 +366,14 @@ class CashierMixin(DiningServiceBase):
             result = self._order_read(order, place_name, place_kind, items)
             await session.commit()
         return result
+
+    async def _receipt_no_for(
+        self, session: AsyncSession, order: DiningOrder
+    ) -> int | None:
+        if order.cash_receipt_id is None:
+            return None
+        return await session.scalar(
+            select(CashReceipt.receipt_no).where(
+                CashReceipt.id == order.cash_receipt_id
+            )
+        )

@@ -8,28 +8,21 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import UTC, datetime
-from decimal import Decimal
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.cash_register.model import CashReceipt
 from app.cash_register.repository import CashRegisterRepository
 from app.core.errors import ApiError
 from app.debt_ledger.service import DebtLedgerService
 from app.dining.model import DiningOrder, DiningOrderItem, DiningPlace
 from app.dining.repository import DiningRepository
 from app.dining.schemas import (
-    DiningItemInput,
     DiningOrderItemRead,
     DiningOrderRead,
-    DiningPlaceRead,
 )
 from app.dining.service_parts.helpers import (
     SessionFactory,
-    _line_total,
-    _price_of,
-    _quantity,
     _unix,
 )
 from app.inventory.service_parts import InventoryService
@@ -122,100 +115,6 @@ class DiningServiceBase:
             return "Stol", "table"
         return place.name, place.kind
 
-    async def _prepare_items(
-        self,
-        session: AsyncSession,
-        *,
-        business_account_id: int,
-        incoming: list[DiningItemInput],
-        empty_message: str,
-    ) -> list[dict[str, object]]:
-        """Narxni serverdagi katalogdan oladi — mijoz yuborgani ishonchsiz."""
-        wanted: dict[int, Decimal] = {}
-        for entry in incoming:
-            wanted[entry.item_id] = wanted.get(entry.item_id, Decimal(0)) + entry.qty
-        if not wanted:
-            raise ApiError(400, "dining_items_required", empty_message)
-        rows = await self._repository.menu_items(
-            session,
-            business_account_id=business_account_id,
-            catalog_item_ids=list(wanted),
-        )
-        prepared: list[dict[str, object]] = []
-        for row in rows:
-            unit = row.unit or "dona"
-            qty = _quantity(wanted[row.id], unit)
-            price = _price_of(row.price_text)
-            prepared.append(
-                {
-                    "catalog_item_id": row.id,
-                    "name": row.name,
-                    "qty": qty,
-                    "unit": unit,
-                    "price": price,
-                    "total": _line_total(price, qty),
-                }
-            )
-        if not prepared:
-            raise ApiError(400, "dining_items_missing", "Tanlangan taomlar topilmadi.")
-        return prepared
-
-    def _add_lines(
-        self,
-        session: AsyncSession,
-        *,
-        order: DiningOrder,
-        business_account_id: int,
-        prepared: list[dict[str, object]],
-        now: datetime,
-    ) -> list[DiningOrderItem]:
-        items = [
-            DiningOrderItem(
-                order_id=order.id,
-                business_account_id=business_account_id,
-                catalog_item_id=line["catalog_item_id"],
-                name=line["name"],
-                qty=line["qty"],
-                unit=line["unit"],
-                price=line["price"],
-                total=line["total"],
-                created_at=now,
-            )
-            for line in prepared
-        ]
-        session.add_all(items)
-        return items
-
-    async def _receipt_no_for(
-        self, session: AsyncSession, order: DiningOrder
-    ) -> int | None:
-        if order.cash_receipt_id is None:
-            return None
-        return await session.scalar(
-            select(CashReceipt.receipt_no).where(
-                CashReceipt.id == order.cash_receipt_id
-            )
-        )
-
-    async def _receipt_numbers(
-        self, session: AsyncSession, orders: list[DiningOrder]
-    ) -> dict[int, int | None]:
-        wanted = {
-            order.cash_receipt_id: order.id
-            for order in orders
-            if order.cash_receipt_id is not None
-        }
-        if not wanted:
-            return {}
-        rows = (
-            await session.execute(
-                select(CashReceipt.id, CashReceipt.receipt_no).where(
-                    CashReceipt.id.in_(wanted)
-                )
-            )
-        ).all()
-        return {wanted[row.id]: row.receipt_no for row in rows}
-
     async def _notify(
         self,
         session: AsyncSession,
@@ -274,89 +173,6 @@ class DiningServiceBase:
         if action_type is not None:
             statement = statement.where(Notification.action_type == action_type)
         await session.execute(statement)
-
-    async def _notify_new_order(
-        self,
-        session: AsyncSession,
-        *,
-        business_account_id: int,
-        order: DiningOrder,
-        place_name: str,
-        amount: int,
-        now: datetime,
-    ) -> None:
-        await self._notify(
-            session,
-            business_account_id=business_account_id,
-            event_key=f"dining:{order.id}:kitchen",
-            title="Yangi ichki zakaz",
-            body_text=f"{place_name} · {amount} so‘m",
-            action_type="dining_kitchen",
-            order_id=order.id,
-            target_perm="kitchen",
-            now=now,
-        )
-        await self._notify(
-            session,
-            business_account_id=business_account_id,
-            event_key=f"dining:{order.id}:cash",
-            title="Yangi ochiq hisob",
-            body_text=f"{place_name} · {amount} so‘m",
-            action_type="dining_cash",
-            order_id=order.id,
-            target_perm="kassa",
-            now=now,
-        )
-
-    async def _notify_added_items(
-        self,
-        session: AsyncSession,
-        *,
-        business_account_id: int,
-        order: DiningOrder,
-        place_name: str,
-        amount: int,
-        now: datetime,
-    ) -> None:
-        stamp = int(now.timestamp())
-        await self._notify(
-            session,
-            business_account_id=business_account_id,
-            event_key=f"dining:{order.id}:items:{stamp}:kitchen",
-            title="Ichki zakazga yangi taom qo‘shildi",
-            body_text=f"{place_name} · +{amount} so‘m",
-            action_type="dining_kitchen",
-            order_id=order.id,
-            target_perm="kitchen",
-            now=now,
-        )
-        await self._notify(
-            session,
-            business_account_id=business_account_id,
-            event_key=f"dining:{order.id}:items:{stamp}:cash",
-            title="Ichki zakaz hisobi yangilandi",
-            body_text=f"{place_name} · +{amount} so‘m",
-            action_type="dining_cash",
-            order_id=order.id,
-            target_perm="kassa",
-            now=now,
-        )
-
-    @staticmethod
-    def _place_read(place: DiningPlace, active_order_id: int | None) -> DiningPlaceRead:
-        return DiningPlaceRead(
-            id=place.id,
-            kind=place.kind,
-            name=place.name,
-            seats=place.seats,
-            x=place.x,
-            y=place.y,
-            locked=place.locked,
-            active_order_id=active_order_id,
-            occupied=active_order_id is not None,
-            created_at=_unix(place.created_at),
-            updated_at=_unix(place.updated_at),
-        )
 
     @staticmethod
     def _order_read(

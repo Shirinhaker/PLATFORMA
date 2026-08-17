@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,26 +10,19 @@ from app.catalog.model import CatalogItem
 from app.core.errors import ApiError
 from app.notifications.repository import NotificationRepository
 from app.profiles.model import BusinessProfile
-from app.public_ids import build_content_public_id
 from app.queues.model import QueueEntry, QueueProvider
-from app.queues.repository import ACTIVE_STATUSES, QueueRepository
-from app.queues.schemas import (
-    QueueEntryRead,
-    QueueProviderRead,
-    QueueProviderWrite,
-)
+from app.queues.repository import QueueRepository
 from app.queues.service_parts.helpers import (
     QUEUE_DIRECTIONS,
     UZBEKISTAN_TZ,
     NowProvider,
     SessionFactory,
-    _clock,
-    _clock_text,
 )
+from app.queues.service_parts.projection import QueueProjectionMixin
 from app.staff.repository import StaffRepository
 
 
-class QueueServiceBase:
+class QueueServiceBase(QueueProjectionMixin):
     def __init__(
         self,
         session_factory: SessionFactory,
@@ -136,39 +129,6 @@ class QueueServiceBase:
                 )
         return provider
 
-    async def _provider_items(
-        self,
-        session: AsyncSession,
-        business_account_id: int,
-        body: QueueProviderWrite,
-    ) -> list[CatalogItem]:
-        items = await self._repository.enabled_items_by_public_ids(
-            session,
-            business_account_id=business_account_id,
-            public_ids=body.item_public_ids,
-        )
-        by_public = {self._item_public_id(item): item for item in items}
-        if len(by_public) != len(body.item_public_ids) or any(
-            public_id not in by_public for public_id in body.item_public_ids
-        ):
-            raise ApiError(
-                400,
-                "queue_enabled_service_required",
-                "Navbat yoqilgan xizmatni tanlang.",
-            )
-        return [by_public[public_id] for public_id in body.item_public_ids]
-
-    def _provider_times(self, body: QueueProviderWrite) -> tuple[time, time]:
-        work_start = _clock(body.work_start)
-        work_end = _clock(body.work_end)
-        if work_start >= work_end:
-            raise ApiError(
-                400,
-                "queue_provider_hours_invalid",
-                "Ish vaqti noto'g'ri.",
-            )
-        return work_start, work_end
-
     async def _staff_rows(
         self,
         session: AsyncSession,
@@ -184,24 +144,6 @@ class QueueServiceBase:
             for row in rows
         ]
 
-    async def _active_staff(
-        self,
-        session: AsyncSession,
-        business: BusinessProfile,
-        staff_id: int,
-    ) -> dict[str, object]:
-        staff = next(
-            (
-                row
-                for row in await self._staff_rows(session, business)
-                if int(row["id"]) == staff_id
-            ),
-            None,
-        )
-        if staff is None:
-            raise ApiError(400, "queue_active_staff_required", "Faol xodimni tanlang.")
-        return staff
-
     async def _staff_source_exists(
         self,
         session: AsyncSession,
@@ -212,84 +154,6 @@ class QueueServiceBase:
                 session,
                 business.account_id,
             )
-        )
-
-    def _provider_read(
-        self,
-        provider: QueueProvider,
-        items: list[CatalogItem],
-        *,
-        queue_count: int = 0,
-    ) -> QueueProviderRead:
-        return QueueProviderRead(
-            id=provider.id,
-            staff_id=provider.legacy_staff_id,
-            name=provider.staff_name_snapshot,
-            profession=provider.profession_snapshot,
-            specialty=provider.specialty,
-            experience_years=provider.experience_years,
-            qualification=provider.qualification,
-            work_days=provider.work_days,
-            work_start=_clock_text(provider.work_start),
-            work_end=_clock_text(provider.work_end),
-            avg_minutes=provider.avg_minutes,
-            room=provider.room,
-            bio=provider.bio,
-            status=provider.status,
-            mode=provider.mode,
-            item_public_ids=[self._item_public_id(item) for item in items],
-            queue_count=queue_count,
-        )
-
-    async def _project(
-        self,
-        session: AsyncSession,
-        queue_id: int,
-    ) -> QueueEntryRead:
-        row = await self._repository.projected_entry(session, queue_id)
-        if row is None:
-            raise ApiError(404, "queue_not_found", "Navbat topilmadi.")
-        return self._entry_read(*row)
-
-    def _entry_read(
-        self,
-        entry: QueueEntry,
-        avg_minutes: int,
-        ahead_count: int,
-        business_name: str,
-        business_direction: str,
-    ) -> QueueEntryRead:
-        active = entry.status in ACTIVE_STATUSES
-        ahead = int(ahead_count or 0) if active else 0
-        average = int(avg_minutes or 0)
-        return QueueEntryRead(
-            id=entry.id,
-            business_account_id=entry.business_account_id,
-            business_name=str(business_name or ""),
-            business_direction=str(business_direction or ""),
-            customer_account_id=entry.customer_account_id,
-            item_public_id=(
-                build_content_public_id("service", entry.catalog_item_id)
-                if entry.catalog_item_id is not None
-                else ""
-            ),
-            provider_id=entry.provider_id,
-            patient_name=entry.patient_name,
-            phone=entry.phone,
-            service_name=entry.service_name_snapshot,
-            provider_name=entry.provider_name_snapshot,
-            queue_date=entry.queue_date,
-            queue_no=entry.queue_no,
-            queue_code=entry.queue_code,
-            source=entry.source,
-            status=entry.status,
-            note=entry.note,
-            slot_time=_clock_text(entry.slot_time),
-            ahead_count=ahead,
-            avg_minutes=average,
-            wait_minutes=ahead * average if active and average > 0 else 0,
-            created_at=entry.created_at,
-            updated_at=entry.updated_at,
         )
 
     async def _notify(
@@ -342,7 +206,3 @@ class QueueServiceBase:
 
     def _local_now(self) -> datetime:
         return self._now().astimezone(UZBEKISTAN_TZ)
-
-    @staticmethod
-    def _item_public_id(item: CatalogItem) -> str:
-        return item.public_id or build_content_public_id(item.kind, item.id)
