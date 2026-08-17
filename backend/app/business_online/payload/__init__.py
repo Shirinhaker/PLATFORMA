@@ -21,3 +21,9 @@ Bog'liqlik yo'nalishi bir tomonlama:
 Aylanma import yo'q, `tests/test_payload_package_layering.py` shuni
 tekshiradi.
 """
+
+from app.business_online.payload.service import (
+    BusinessOnlinePayloadService,
+)
+
+__all__ = ["BusinessOnlinePayloadService"]

@@ -11,7 +11,7 @@ from app.auth.dependencies import (
     require_staff_permission,
 )
 from app.core.errors import ApiError
-from app.education.management_service import EducationManagementService
+from app.education.management import EducationManagementService
 from app.education.schemas import (
     CourseEnrollmentCreate,
     CourseEnrollmentCreated,

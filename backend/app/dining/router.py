@@ -30,7 +30,7 @@ from app.dining.schemas import (
     DiningPlaceWrite,
     DiningProblemOpen,
 )
-from app.dining.service import DiningService
+from app.dining.service_parts import DiningService
 
 router = APIRouter(prefix="/api/v1/dining", tags=["dining"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from app.business_online.payload_service import BusinessOnlinePayloadService
+from app.business_online.payload import BusinessOnlinePayloadService
 from app.core.errors import ApiError
 from app.profiles.model import BusinessProfile, UserProfile
 

@@ -18,7 +18,7 @@ from app.cash_register.service_parts.helpers import (
 )
 from app.core.errors import ApiError
 from app.debt_ledger.service import DebtLedgerService
-from app.inventory.service import InventoryService
+from app.inventory.service_parts import InventoryService
 
 
 class CashRegisterServiceBase:

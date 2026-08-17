@@ -28,7 +28,7 @@ from app.inventory.model import (
     StockBatchConsumption,
     StockMove,
 )
-from app.inventory.service import InventoryService
+from app.inventory.service_parts import InventoryService
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing
 from app.orders.model import Order, OrderItem

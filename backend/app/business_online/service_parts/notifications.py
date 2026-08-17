@@ -8,11 +8,9 @@ from uuid import uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.business_online.payload_service import (
-    append_medical_user_notification,
-    normalized_payload,
-    resource_rows,
-)
+from app.business_online.payload.helpers import normalized_payload
+from app.business_online.payload.medical_queue import append_medical_user_notification
+from app.business_online.payload.spec import resource_rows
 from app.business_online.service_parts.base import BusinessOnlineServiceBase
 from app.cabinet_records.dual_write import sync_json_fallback
 from app.profiles.model import UserProfile

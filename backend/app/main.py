@@ -44,10 +44,10 @@ from app.db.session import Database
 from app.debt_ledger.router import router as debt_ledger_router
 from app.debt_ledger.service import DebtLedgerService
 from app.dining.router import router as dining_router
-from app.dining.service import DiningService
+from app.dining.service_parts import DiningService
 from app.documents.router import router as documents_router
 from app.documents.service_parts import DocumentService
-from app.education.management_service import EducationManagementService
+from app.education.management import EducationManagementService
 from app.education.router import router as education_router
 from app.education.service import EducationEnrollmentService
 from app.education.statistics_service import EducationStatisticsService
@@ -56,7 +56,7 @@ from app.expenses.service import ExpenseService
 from app.follows.router import router as follows_router
 from app.follows.service import FollowService
 from app.inventory.router import router as inventory_router
-from app.inventory.service import InventoryService
+from app.inventory.service_parts import InventoryService
 from app.listings.activation import ListingActivationService
 from app.listings.router import router as listings_router
 from app.listings.service import ListingService
@@ -67,7 +67,7 @@ from app.messages.service import MessageService
 from app.notifications.router import router as notifications_router
 from app.notifications.service_parts import NotificationService
 from app.orders.router import router as orders_router
-from app.orders.service import OrderService
+from app.orders.service_parts import OrderService
 from app.payments.router import router as payments_router
 from app.payments.service_parts import PaymentService
 from app.platform.router import router as platform_router
@@ -76,7 +76,7 @@ from app.profiles.summary_service import ProfileSummaryService
 from app.public_discovery.router import router as public_discovery_router
 from app.public_discovery.service import PublicDiscoveryService
 from app.queues.router import router as queues_router
-from app.queues.service import QueueService
+from app.queues.service_parts import QueueService
 from app.reviews.router import router as reviews_router
 from app.reviews.service import ReviewService
 from app.specialists.router import router as specialists_router
@@ -89,7 +89,7 @@ from app.stories.router import router as stories_router
 from app.stories.service_parts import StoryService
 from app.taxi.admin_router import router as taxi_admin_router
 from app.taxi.router import router as taxi_router
-from app.taxi.service import TaxiService
+from app.taxi.service_parts import TaxiService
 
 DEPLOYED_ENVIRONMENTS = {"staging", "production"}
 

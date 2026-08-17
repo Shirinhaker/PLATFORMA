@@ -5,7 +5,7 @@ from fastapi import APIRouter, Path, Request
 from app.admin.audit import request_meta
 from app.admin.dependencies import CurrentAdmin
 from app.taxi.schemas import AdminDriverRead, DriverTopupRead, DriverTopupWrite
-from app.taxi.service import TaxiService
+from app.taxi.service_parts import TaxiService
 
 router = APIRouter(prefix="/api/v1/admin/taxi", tags=["admin", "taxi"])
 DriverId = Annotated[int, Path(gt=0)]

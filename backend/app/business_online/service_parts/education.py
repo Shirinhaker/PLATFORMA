@@ -7,11 +7,13 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.business_online.payload_service import (
-    display_resource_rows,
-    ensure_resource_direction,
+from app.business_online.payload.helpers import (
     missing_record_id,
     unix_now,
+)
+from app.business_online.payload.spec import (
+    display_resource_rows,
+    ensure_resource_direction,
 )
 from app.business_online.service_parts.base import BusinessOnlineServiceBase
 from app.business_online.service_parts.helpers import (

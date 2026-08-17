@@ -13,7 +13,7 @@ from app.auth.schemas import (
     SessionIdentity,
 )
 from app.auth.security import derive_csrf
-from app.auth.service import INVALID_CREDENTIALS
+from app.auth.service_parts.helpers import INVALID_CREDENTIALS
 from app.core.config import Settings
 from app.main import create_app
 

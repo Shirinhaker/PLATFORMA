@@ -36,14 +36,14 @@ from app.dining.schemas import (
     DiningPaymentCreate,
     DiningProblemOpen,
 )
-from app.dining.service import DiningService
+from app.dining.service_parts import DiningService
 from app.inventory.model import (
     InventoryItem,
     StockBatch,
     StockBatchConsumption,
     StockMove,
 )
-from app.inventory.service import InventoryService
+from app.inventory.service_parts import InventoryService
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing
 from app.notifications.model import (

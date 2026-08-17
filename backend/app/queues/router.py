@@ -24,7 +24,7 @@ from app.queues.schemas import (
     QueueStatusChange,
     QueueSwap,
 )
-from app.queues.service import QueueService
+from app.queues.service_parts import QueueService
 
 router = APIRouter(prefix="/api/v1/queues", tags=["queues"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

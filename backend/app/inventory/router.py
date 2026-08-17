@@ -19,7 +19,7 @@ from app.inventory.schemas import (
     StockMoveRead,
     StockMoveResult,
 )
-from app.inventory.service import InventoryService
+from app.inventory.service_parts import InventoryService
 
 router = APIRouter(prefix="/api/v1/warehouse", tags=["warehouse"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

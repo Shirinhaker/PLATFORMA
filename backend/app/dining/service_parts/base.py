@@ -32,7 +32,7 @@ from app.dining.service_parts.helpers import (
     _quantity,
     _unix,
 )
-from app.inventory.service import InventoryService
+from app.inventory.service_parts import InventoryService
 from app.notifications.model import Notification
 from app.notifications.repository import NotificationRepository
 from app.staff.model import StaffMember

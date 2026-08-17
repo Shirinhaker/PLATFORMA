@@ -6,10 +6,8 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.business_online.payload_service import (
-    normalized_payload,
-    resource_rows,
-)
+from app.business_online.payload.helpers import normalized_payload
+from app.business_online.payload.spec import resource_rows
 from app.business_online.service_parts.helpers import (
     RELATIONAL_EDUCATION_RESOURCES,
     CatalogSync,
