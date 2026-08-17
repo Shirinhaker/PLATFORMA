@@ -7,6 +7,9 @@ import { createDiningClient, type DiningClient } from "./dining-client";
 import { createEducationClient, type EducationClient } from "./education-client";
 import { ApiTransport } from "./http";
 import { createListingsClient, type ListingsClient } from "./listings-client";
+import { createAuthClient, type AuthClient } from "./auth-client";
+import { createProfilesClient, type ProfilesClient } from "./profiles-client";
+import { createPaymentsClient, type PaymentsClient } from "./payments-client";
 import { createOrdersClient, type OrdersClient } from "./orders-client";
 import { createQueuesClient, type QueuesClient } from "./queues-client";
 import { createPublicClient, type PublicClient } from "./public-client";
@@ -83,6 +86,9 @@ export class ApiClient {
 
   constructor(baseUrl: string, fetcher: typeof fetch, auth: AuthContext) {
     this.transport = new ApiTransport(baseUrl, fetcher, auth);
+    Object.assign(this, createAuthClient(this.transport));
+    Object.assign(this, createProfilesClient(this.transport));
+    Object.assign(this, createPaymentsClient(this.transport));
     Object.assign(this, createBusinessOperationsClient(this.transport));
     Object.assign(this, createDiningClient(this.transport));
     Object.assign(this, createEducationClient(this.transport));
@@ -105,78 +111,6 @@ export class ApiClient {
 
   getBuild(): Promise<BuildInfo> {
     return this.request("GET", "/api/v1/build");
-  }
-
-  startRegistration(body: RegistrationStart): Promise<ChallengeStarted> {
-    return this.request("POST", "/api/v1/auth/register/start", body);
-  }
-
-  verifyRegistration(body: ChallengeVerification): Promise<Authenticated> {
-    return this.request("POST", "/api/v1/auth/register/verify", body);
-  }
-
-  startLogin(body: LoginStart): Promise<ChallengeStarted> {
-    return this.request("POST", "/api/v1/auth/login/start", body);
-  }
-
-  verifyLogin(body: ChallengeVerification): Promise<Authenticated> {
-    return this.request("POST", "/api/v1/auth/login/verify", body);
-  }
-
-  loginStaff(body: {
-    firm_login: string;
-    login: string;
-    password: string;
-  }): Promise<SessionIdentity> {
-    return this.request("POST", "/api/v1/staff-auth/login", body);
-  }
-
-  resendChallenge(requestId: number): Promise<ChallengeResent> {
-    return this.request("POST", `/api/v1/auth/challenges/${requestId}/resend`);
-  }
-
-  async getSession(): Promise<SessionIdentity> {
-    const session = await this.request<SessionResponse>("GET", "/api/v1/auth/session");
-    if (typeof session.name === "string") return session as SessionIdentity;
-    const me = await this.getMe();
-    return { ...session, name: me.name };
-  }
-
-  async logout(): Promise<void> {
-    await this.request<void>("POST", "/api/v1/auth/logout", undefined, true);
-    this.transport.clearCsrfToken();
-  }
-
-  getBusinessCredentials(): Promise<BusinessCredentials> {
-    return this.request(
-      "GET",
-      "/api/v1/account-settings/business-credentials",
-      undefined,
-      true,
-    );
-  }
-
-  updateBusinessCredentials(
-    body: BusinessCredentialsUpdate,
-  ): Promise<BusinessCredentials> {
-    return this.request(
-      "PUT",
-      "/api/v1/account-settings/business-credentials",
-      body,
-      true,
-    );
-  }
-
-  getMe(): Promise<Me> {
-    return this.request("GET", "/api/v1/me", undefined, true);
-  }
-
-  getUserProfile(): Promise<UserProfile> {
-    return this.request("GET", "/api/v1/user-profile", undefined, true);
-  }
-
-  updateUserProfile(body: UserProfilePatch): Promise<UserProfile> {
-    return this.request("PUT", "/api/v1/user-profile", body, true);
   }
 
   getMySpecialist(): Promise<SpecialistProfile> {
@@ -236,14 +170,6 @@ export class ApiClient {
       undefined,
       true,
     );
-  }
-
-  getBusinessProfile(): Promise<BusinessProfile> {
-    return this.request("GET", "/api/v1/business-profile", undefined, true);
-  }
-
-  updateBusinessProfile(body: BusinessProfilePatch): Promise<BusinessProfile> {
-    return this.request("PUT", "/api/v1/business-profile", body, true);
   }
 
   reverseGeocode(latitude: number, longitude: number): Promise<ReverseGeocodeResult> {
@@ -315,47 +241,6 @@ export class ApiClient {
     );
   }
 
-  switchCabinet(targetType: AccountType): Promise<CabinetSwitch> {
-    return this.request(
-      "POST",
-      "/api/v1/cabinet/switch",
-      { target_type: targetType },
-      true,
-    );
-  }
-
-  openBusiness(body: BusinessOpeningWrite): Promise<BusinessOpeningRead> {
-    return this.request("POST", "/api/v1/business-opening", body, true);
-  }
-
-  getPaymentCatalog(): Promise<PaymentCatalog> {
-    return this.request("GET", "/api/v1/payments/catalog", undefined, true);
-  }
-
-  createPaymentRequest(body: PaymentRequestBody): Promise<PaymentRequestRecord> {
-    return this.request("POST", "/api/v1/payments/requests", body, true);
-  }
-
-  getMyPayments(): Promise<PaymentRequestRecord[]> {
-    return this.request("GET", "/api/v1/payments/my", undefined, true);
-  }
-
-  getBusinessSubscription(): Promise<BusinessSubscriptionSummary> {
-    return this.request("GET", "/api/v1/payments/subscription", undefined, true);
-  }
-
-  resubmitPayment(
-    paymentId: number,
-    receipt: PaymentReceiptRef,
-  ): Promise<PaymentRequestRecord> {
-    return this.request(
-      "POST",
-      `/api/v1/payments/${paymentId}/resubmit`,
-      { receipt },
-      true,
-    );
-  }
-
   createUploadGrant(body: UploadGrantRequest): Promise<UploadGrant> {
     return this.request("POST", "/api/v1/media/upload-grants", body, true);
   }
@@ -368,20 +253,6 @@ export class ApiClient {
       file,
     );
   }
-
-  attachUserAvatar(body: ProfileImageAttachment): Promise<UserProfile> {
-    return this.request("PUT", "/api/v1/user-profile/avatar", body, true);
-  }
-
-  attachBusinessLogo(body: ProfileImageAttachment): Promise<BusinessProfile> {
-    return this.request("PUT", "/api/v1/business-profile/logo", body, true);
-  }
-
-  attachBusinessPaymentQr(body: { object_key: string }): Promise<BusinessProfile> {
-    return this.request("PUT", "/api/v1/business-profile/payment-qr", body, true);
-  }
-
-  // --- Ovqatlanish zanjiri (K13) ---
 
   getAIChatHistory(limit = 30): Promise<AIChatHistory> {
     return this.request("GET", `/api/v1/ai-assistant/history?limit=${limit}`);
@@ -479,6 +350,9 @@ export class ApiClient {
 
 export interface ApiClient
   extends
+    AuthClient,
+    ProfilesClient,
+    PaymentsClient,
     BusinessOperationsClient,
     DiningClient,
     EducationClient,
