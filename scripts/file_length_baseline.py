@@ -26,7 +26,6 @@ BASELINE: dict[str, int] = {
     "backend/app/staff/service.py": 646,
     "backend/app/stories/service.py": 521,
     "frontend/src/dining/BusinessDiningCash.tsx": 761,
-    "frontend/src/documents/Documents.tsx": 1112,
     "frontend/src/inventory/Warehouse.tsx": 718,
     "frontend/src/legacy/public/PublicProfile.tsx": 527,
     "frontend/src/messages/Messages.tsx": 683,
