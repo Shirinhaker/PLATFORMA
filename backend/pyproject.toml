@@ -27,6 +27,8 @@ test = [
   "pytest>=8,<10",
   "pytest-asyncio>=0.25,<2",
   "fakeredis[lua]>=2.27,<3",
+  # Qoplamani o'lchash uchun. Hisobot: docs/qoplama-hisoboti.md
+  "pytest-cov>=6,<8",
 ]
 
 [project.scripts]
