@@ -15,7 +15,7 @@ from app.staff.schemas import (
     StaffAttendanceWrite,
     StaffMemberCreate,
 )
-from app.staff.service import StaffService
+from app.staff.service_parts import StaffService
 
 
 class ExpiringRow(SimpleNamespace):

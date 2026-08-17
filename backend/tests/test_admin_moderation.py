@@ -13,6 +13,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
 from app.accounts.model import Account, AccountType
+from app.admin.moderation import AdminModerationService
 from app.admin.moderation_model import (
     AccountRestriction,
     AdminAccountNote,
@@ -20,7 +21,6 @@ from app.admin.moderation_model import (
     ContentModeration,
     ModerationReport,
 )
-from app.admin.moderation_service import AdminModerationService
 from app.admin.reports_service import AdminReportsService
 from app.core.errors import ApiError
 from app.db.base import Base

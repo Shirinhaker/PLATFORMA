@@ -15,7 +15,7 @@ from app.cash_register.schemas import (
     CashReceiptCreate,
     CashSaleLineCreate,
 )
-from app.cash_register.service import CashRegisterService
+from app.cash_register.service_parts import CashRegisterService
 from app.catalog.model import CatalogGroup, CatalogItem
 from app.core.errors import ApiError
 from app.db.base import Base
@@ -28,7 +28,7 @@ from app.inventory.model import (
     StockBatchConsumption,
     StockMove,
 )
-from app.inventory.service import InventoryService
+from app.inventory.service_parts import InventoryService
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing
 from app.orders.model import Order, OrderItem

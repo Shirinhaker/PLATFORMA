@@ -17,6 +17,7 @@ from app.inventory.schemas import (
     StockMoveResult,
 )
 from app.inventory.service_parts.base import InventoryServiceBase
+from app.inventory.service_parts.batches import BatchesMixin
 from app.inventory.service_parts.helpers import (
     EPSILON,
     REASON_TEXT,
@@ -28,7 +29,7 @@ from app.inventory.service_parts.helpers import (
 )
 
 
-class MovesMixin(InventoryServiceBase):
+class MovesMixin(BatchesMixin, InventoryServiceBase):
     async def create_move(
         self,
         *,
@@ -386,3 +387,11 @@ class MovesMixin(InventoryServiceBase):
             ]
             await session.rollback()
             return result
+
+    @staticmethod
+    def _move_deletable(move: StockMove) -> bool:
+        if move.legacy_order_source_id is not None:
+            return False
+        if move.reason not in {"kirim", "chiqim"}:
+            return False
+        return not move.note.startswith(("Kassa", "Chek", "Ishlab chiqarish"))

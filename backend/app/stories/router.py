@@ -21,7 +21,7 @@ from app.stories.schemas import (
     StoryViewerRead,
     StoryViewResult,
 )
-from app.stories.service import StoryService
+from app.stories.service_parts import StoryService
 
 router = APIRouter(prefix="/api/v1/stories", tags=["stories"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

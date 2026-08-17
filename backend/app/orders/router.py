@@ -20,7 +20,7 @@ from app.orders.schemas import (
     OrderRead,
     OrderStatusChange,
 )
-from app.orders.service import OrderService
+from app.orders.service_parts import OrderService
 
 router = APIRouter(prefix="/api/v1/orders", tags=["orders"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

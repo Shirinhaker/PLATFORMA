@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+from datetime import time
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.catalog.model import CatalogItem
 from app.core.errors import ApiError
+from app.profiles.model import BusinessProfile
 from app.queues.model import QueueProvider
 from app.queues.schemas import (
     QueueBusinessSetupRead,
@@ -12,6 +18,7 @@ from app.queues.schemas import (
     QueueStaffRead,
 )
 from app.queues.service_parts.base import QueueServiceBase
+from app.queues.service_parts.helpers import _clock
 
 
 class ProvidersMixin(QueueServiceBase):
@@ -172,3 +179,54 @@ class ProvidersMixin(QueueServiceBase):
             )
             await session.commit()
             return self._provider_read(provider, items)
+
+    async def _provider_items(
+        self,
+        session: AsyncSession,
+        business_account_id: int,
+        body: QueueProviderWrite,
+    ) -> list[CatalogItem]:
+        items = await self._repository.enabled_items_by_public_ids(
+            session,
+            business_account_id=business_account_id,
+            public_ids=body.item_public_ids,
+        )
+        by_public = {self._item_public_id(item): item for item in items}
+        if len(by_public) != len(body.item_public_ids) or any(
+            public_id not in by_public for public_id in body.item_public_ids
+        ):
+            raise ApiError(
+                400,
+                "queue_enabled_service_required",
+                "Navbat yoqilgan xizmatni tanlang.",
+            )
+        return [by_public[public_id] for public_id in body.item_public_ids]
+
+    async def _active_staff(
+        self,
+        session: AsyncSession,
+        business: BusinessProfile,
+        staff_id: int,
+    ) -> dict[str, object]:
+        staff = next(
+            (
+                row
+                for row in await self._staff_rows(session, business)
+                if int(row["id"]) == staff_id
+            ),
+            None,
+        )
+        if staff is None:
+            raise ApiError(400, "queue_active_staff_required", "Faol xodimni tanlang.")
+        return staff
+
+    def _provider_times(self, body: QueueProviderWrite) -> tuple[time, time]:
+        work_start = _clock(body.work_start)
+        work_end = _clock(body.work_end)
+        if work_start >= work_end:
+            raise ApiError(
+                400,
+                "queue_provider_hours_invalid",
+                "Ish vaqti noto'g'ri.",
+            )
+        return work_start, work_end

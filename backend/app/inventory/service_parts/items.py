@@ -109,3 +109,24 @@ class ItemsMixin(InventoryServiceBase):
                 stock_type=item.stock_type,
                 low_stock=item.stock_qty <= item.min_qty,
             )
+
+    @staticmethod
+    def _item_read(row, *, show_costs: bool) -> InventoryItemRead:
+        item, catalog, group_name, fifo_next_cost, fifo_value = row
+        return InventoryItemRead(
+            id=item.id,
+            catalog_item_id=catalog.id,
+            name=catalog.name,
+            price=catalog.price_text if show_costs else "",
+            unit=catalog.unit or "dona",
+            stock_qty=_number(item.stock_qty),
+            cost_price=item.cost_price if show_costs else 0,
+            fifo_next_cost=int(fifo_next_cost or 0) if show_costs else 0,
+            fifo_value=int(round(float(fifo_value or 0))) if show_costs else 0,
+            min_qty=_number(item.min_qty),
+            image_url="",
+            group_id=catalog.catalog_group_id,
+            group_name=str(group_name or ""),
+            stock_type=item.stock_type,
+            low_stock=item.stock_qty <= item.min_qty,
+        )

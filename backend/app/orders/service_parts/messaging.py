@@ -227,3 +227,50 @@ class MessagingMixin(OrderServiceBase):
                 )
                 await session.commit()
             return await self._project_message(session, message, account_id)
+
+    async def _project_message(
+        self, session, message: OrderMessage, account_id: int
+    ) -> OrderMessageRead:
+        sender = await self._profile(
+            session, message.sender_account_id, message.sender_kind
+        )
+        reply = None
+        if message.reply_to_id is not None:
+            reply_message = await self._repository.message(
+                session,
+                order_id=message.order_id,
+                message_id=message.reply_to_id,
+            )
+            if reply_message is not None:
+                reply_sender = await self._profile(
+                    session,
+                    reply_message.sender_account_id,
+                    reply_message.sender_kind,
+                )
+                reply = {
+                    "id": reply_message.id,
+                    "text": "" if reply_message.is_deleted else reply_message.text,
+                    "media_type": reply_message.media_type,
+                    "is_deleted": reply_message.is_deleted,
+                    "sender_name": reply_sender.name if reply_sender else "",
+                }
+        return OrderMessageRead(
+            id=message.id,
+            text=message.text,
+            media_type=message.media_type,
+            media_url=(
+                self._image_url_provider(message.media_object_key)
+                if message.media_object_key
+                else message.legacy_media_url
+            ),
+            file_name=message.file_name,
+            reply_to_id=message.reply_to_id,
+            reply=reply,
+            edited_at=message.edited_at,
+            deleted_at=message.deleted_at,
+            is_deleted=message.is_deleted,
+            mine=message.sender_account_id == account_id,
+            sender_name=sender.name if sender else "",
+            sender_kind=message.sender_kind,
+            created_at=message.created_at,
+        )

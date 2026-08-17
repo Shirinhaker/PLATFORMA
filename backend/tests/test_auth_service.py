@@ -16,7 +16,7 @@ from app.auth.security import (
     sha256_token,
     verify_password,
 )
-from app.auth.service import AuthService
+from app.auth.service_parts import AuthService
 
 # Diqqat: nom **ishlatilgan** modulda almashtiriladi. `service.py` endi
 # qayta-eksport qobig'i, undagi almashtirish mixin'larga yetib bormaydi.

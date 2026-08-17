@@ -50,7 +50,7 @@ from app.queues.schemas import (
     QueueStatusChange,
     QueueSwap,
 )
-from app.queues.service import QueueService
+from app.queues.service_parts import QueueService
 from app.staff.model import StaffMember
 
 NOW = datetime(2026, 8, 2, 7, 0, tzinfo=UTC)  # O'zbekistonda 12:00

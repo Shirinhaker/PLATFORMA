@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.accounts.model import Account, AccountType
 from app.cabinet_records.model import CabinetRecord, CabinetRecordField, CabinetResource
 from app.cash_register.model import CashReceipt, CashReceiptCounter, CashReceiptLine
-from app.cash_register.service import CashRegisterService
+from app.cash_register.service_parts import CashRegisterService
 from app.catalog.model import CatalogGroup, CatalogItem
 from app.catalog.repository import build_content_public_id
 from app.core.errors import ApiError
@@ -21,7 +21,7 @@ from app.inventory.model import (
     StockBatchConsumption,
     StockMove,
 )
-from app.inventory.service import InventoryService
+from app.inventory.service_parts import InventoryService
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.listings.model import Listing
 from app.notifications.model import (
@@ -42,7 +42,7 @@ from app.orders.schemas import (
     OrderProblemSolution,
     OrderStatusChange,
 )
-from app.orders.service import OrderService
+from app.orders.service_parts import OrderService
 from app.outbox.model import OutboxEvent
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
 from app.public_discovery.repository import build_listing_public_id, build_public_id

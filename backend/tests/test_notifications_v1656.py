@@ -25,7 +25,7 @@ from app.notifications.schemas import (
     NotificationPreferenceWrite,
     PushDeviceWrite,
 )
-from app.notifications.service import NotificationService, price_number
+from app.notifications.service_parts import NotificationService, price_number
 from app.orders.model import Order  # noqa: F401
 from app.profiles.model import ProfileLink
 

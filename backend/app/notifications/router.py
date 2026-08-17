@@ -22,7 +22,7 @@ from app.notifications.schemas import (
     PushDeviceWrite,
     PushStatusRead,
 )
-from app.notifications.service import NotificationService
+from app.notifications.service_parts import NotificationService
 
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

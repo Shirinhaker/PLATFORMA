@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -117,3 +119,16 @@ class DeliveryMixin(TaxiServiceBase):
             if driver is not None:
                 driver.available = True
                 driver.updated_at = ride.updated_at
+
+    @staticmethod
+    def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+        radians = math.pi / 180
+        delta_lat = (lat2 - lat1) * radians
+        delta_lng = (lng2 - lng1) * radians
+        value = (
+            math.sin(delta_lat / 2) ** 2
+            + math.cos(lat1 * radians)
+            * math.cos(lat2 * radians)
+            * math.sin(delta_lng / 2) ** 2
+        )
+        return round(6371 * 2 * math.atan2(math.sqrt(value), math.sqrt(1 - value)), 1)

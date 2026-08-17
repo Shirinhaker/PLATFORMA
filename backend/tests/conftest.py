@@ -7,7 +7,7 @@ import fakeredis.aioredis
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from app.auth.service import AuthService
+from app.auth.service_parts import AuthService
 from app.core.config import Settings
 
 

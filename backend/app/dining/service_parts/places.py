@@ -12,6 +12,9 @@ from app.dining.schemas import (
     DiningPlaceWrite,
 )
 from app.dining.service_parts.base import DiningServiceBase
+from app.dining.service_parts.helpers import (
+    _unix,
+)
 
 
 class PlacesMixin(DiningServiceBase):
@@ -206,3 +209,19 @@ class PlacesMixin(DiningServiceBase):
             result = self._order_read(order, place.name, place.kind, [])
             await session.commit()
         return result
+
+    @staticmethod
+    def _place_read(place: DiningPlace, active_order_id: int | None) -> DiningPlaceRead:
+        return DiningPlaceRead(
+            id=place.id,
+            kind=place.kind,
+            name=place.name,
+            seats=place.seats,
+            x=place.x,
+            y=place.y,
+            locked=place.locked,
+            active_order_id=active_order_id,
+            occupied=active_order_id is not None,
+            created_at=_unix(place.created_at),
+            updated_at=_unix(place.updated_at),
+        )

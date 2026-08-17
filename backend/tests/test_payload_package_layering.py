@@ -83,12 +83,37 @@ def test_every_module_stays_readable():
     assert oversized == {}
 
 
-def test_old_module_path_still_works():
-    """Chaqiruv joylari o'zgarmagani — qayta-eksport qobig'i tirikligi."""
+def test_shim_is_gone_and_package_is_the_only_entry_point():
+    """Eski `payload_service.py` qobig'i o'chirilgan.
 
-    from app.business_online import payload_service
+    U bo'lish paytida chaqiruv joylarini buzmaslik uchun qoldirilgandi.
+    Vaqtinchalik yechim o'z vazifasini bajardi va endi zarar keltiradi:
+    turgan ekan, yangi dasturchi eski yo'ldan yurib, mavzuli paketni
+    umuman ko'rmasligi mumkin. Bosqich 3.2 da o'chirildi.
+    """
 
-    assert payload_service.BusinessOnlinePayloadService is not None
-    assert callable(payload_service.apply_action)
-    assert callable(payload_service.refresh_derived)
-    assert callable(payload_service.locked_profile)
+    assert not (PACKAGE.parent / "payload_service.py").exists()
+
+    from app.business_online.payload import BusinessOnlinePayloadService
+    from app.business_online.payload.actions import apply_action, refresh_derived
+    from app.business_online.payload.service import locked_profile
+
+    assert BusinessOnlinePayloadService is not None
+    assert callable(apply_action)
+    assert callable(refresh_derived)
+    assert callable(locked_profile)
+
+
+def test_no_wildcard_imports_inside_the_package():
+    """`import *` nima eksport qilinishini o'qib bilishga imkon bermaydi.
+
+    Qobiqlarda aynan shu ishlatilardi va u maxfiy nomlarni jimgina
+    tushirib qoldirardi.
+    """
+
+    offenders = [
+        path.name
+        for path in sorted(PACKAGE.glob("*.py"))
+        if "import *" in path.read_text(encoding="utf-8")
+    ]
+    assert offenders == []

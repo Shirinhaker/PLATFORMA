@@ -19,7 +19,7 @@ from app.taxi.schemas import (
     RideRead,
     RideStatusWrite,
 )
-from app.taxi.service import TaxiService
+from app.taxi.service_parts import TaxiService
 
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]
 CurrentWrite = Annotated[CurrentAccount, Depends(require_csrf)]

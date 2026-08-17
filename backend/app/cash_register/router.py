@@ -13,7 +13,7 @@ from app.cash_register.schemas import (
     CashReceiptRead,
     CashRegisterRead,
 )
-from app.cash_register.service import CashRegisterService
+from app.cash_register.service_parts import CashRegisterService
 from app.core.errors import ApiError
 
 router = APIRouter(prefix="/api/v1/cash-register", tags=["cash-register"])

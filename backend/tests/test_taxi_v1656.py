@@ -12,7 +12,8 @@ from app.db.base import Base
 from app.profiles.model import UserProfile
 from app.taxi.model import TaxiDriver, TaxiRide
 from app.taxi.schemas import DriverWrite, RideCreate
-from app.taxi.service import TaxiService, calculate_price
+from app.taxi.service_parts import TaxiService
+from app.taxi.service_parts.helpers import calculate_price
 
 NOW = datetime(2026, 8, 11, 8, 0, tzinfo=UTC)
 

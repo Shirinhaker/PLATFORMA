@@ -21,7 +21,7 @@ from app.inventory.model import (
 )
 from app.inventory.repository import InventoryRepository
 from app.inventory.schemas import IngredientWrite, InventoryItemWrite, StockMoveCreate
-from app.inventory.service import InventoryService
+from app.inventory.service_parts import InventoryService
 from app.legacy_migration.model import OwnerState, ReviewState
 from app.profiles.model import BusinessProfile
 

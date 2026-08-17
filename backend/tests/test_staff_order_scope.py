@@ -5,7 +5,7 @@ import pytest
 
 from app.core.errors import ApiError
 from app.orders.repository import OrderRepository
-from app.orders.service import OrderService
+from app.orders.service_parts import OrderService
 
 
 class EmptyScalars:

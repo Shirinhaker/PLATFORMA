@@ -14,10 +14,10 @@ from app.auth.security import (
     derive_csrf,
     verify_password_with_rehash,
 )
-from app.auth.service import (
+from app.auth.service_parts import AuthService
+from app.auth.service_parts.helpers import (
     _SESSION_TOUCH_INTERVAL,
     INVALID_CREDENTIALS,
-    AuthService,
 )
 from app.core.errors import ApiError
 

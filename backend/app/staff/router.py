@@ -24,7 +24,7 @@ from app.staff.schemas import (
     StaffScheduleWrite,
     StaffSetupRead,
 )
-from app.staff.service import UZBEKISTAN_TZ, StaffService
+from app.staff.service_parts import UZBEKISTAN_TZ, StaffService
 
 router = APIRouter(prefix="/api/v1", tags=["staff"])
 CurrentRead = Annotated[CurrentAccount, Depends(require_current_account)]

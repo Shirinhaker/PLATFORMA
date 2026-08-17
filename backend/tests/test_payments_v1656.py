@@ -28,7 +28,7 @@ from app.payments.schemas import (
     PaymentRequestCreate,
     PaymentResubmit,
 )
-from app.payments.service import PaymentService
+from app.payments.service_parts import PaymentService
 
 NOW = datetime(2026, 8, 5, 12, 0, tzinfo=UTC)
 STAMP = 1785200000
