@@ -13,18 +13,16 @@ from app.db.session import Database
 from app.legacy_migration.advertisement_stage import import_advertisements
 from app.legacy_migration.catalog_stage import import_catalog
 from app.legacy_migration.listing_stage import import_listings
-from app.legacy_migration.media_stage import migrate_media
+from app.legacy_migration.media.migrate import migrate_media
 from app.legacy_migration.model import (
     MigrationEnvironment,
     MigrationRun,
     MigrationStage,
     MigrationStatus,
 )
-from app.legacy_migration.reconcile import (
-    StageResult,
-    reconcile_accounts,
-    reconcile_businesses,
-)
+from app.legacy_migration.reconcile_parts.accounts import reconcile_accounts
+from app.legacy_migration.reconcile_parts.businesses import reconcile_businesses
+from app.legacy_migration.reconcile_parts.constants import StageResult
 from app.legacy_migration.source import (
     SnapshotInfo,
     file_sha256,
@@ -32,10 +30,8 @@ from app.legacy_migration.source import (
     open_immutable,
 )
 from app.legacy_migration.story_stage import import_stories
-from app.legacy_migration.verify import (
-    VerificationReport,
-    verify_migration,
-)
+from app.legacy_migration.verify_parts.constants import VerificationReport
+from app.legacy_migration.verify_parts.gates import verify_migration
 from app.media.storage import R2Storage
 
 

@@ -4,13 +4,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.legacy_migration.model import MigrationRun
-from app.legacy_migration.reconcile import (
-    StageResult,
-    _ensure_issue,
-    _find_mapping,
-    _optional_int,
-    _unix_datetime,
-)
+from app.legacy_migration.reconcile_parts.constants import StageResult
+from app.legacy_migration.reconcile_parts.helpers import _optional_int, _unix_datetime
+from app.legacy_migration.reconcile_parts.mapping import _ensure_issue, _find_mapping
 from app.orders.model import Order
 from app.taxi.model import RIDE_STATUSES, TaxiDriver, TaxiRide
 

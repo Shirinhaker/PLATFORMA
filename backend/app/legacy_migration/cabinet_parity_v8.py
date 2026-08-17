@@ -6,13 +6,14 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.legacy_migration.model import MigrationRun
-from app.legacy_migration.profile_parity_v7 import (
+from app.legacy_migration.parity_v7.entry import (
     reconcile_accounts as reconcile_accounts_v7,
 )
-from app.legacy_migration.profile_parity_v7 import (
+from app.legacy_migration.parity_v7.entry import (
     reconcile_businesses as reconcile_businesses_v7,
 )
-from app.legacy_migration.reconcile import StageResult, _find_mapping
+from app.legacy_migration.reconcile_parts.constants import StageResult
+from app.legacy_migration.reconcile_parts.mapping import _find_mapping
 from app.profiles.model import BusinessProfile, UserProfile
 
 # static/index.html v1656: orderIsActive()

@@ -8,7 +8,7 @@ from app.legacy_migration.business_subscription_stage import (
 )
 from app.legacy_migration.demo_prune import prune_demo_records
 from app.legacy_migration.model import LegacyIdMap
-from app.legacy_migration.profile_parity_v7 import enrich_business_cabinets
+from app.legacy_migration.parity_v7.enrich import enrich_business_cabinets
 from app.legacy_migration.real_source_v9 import copy_real_source, open_real_snapshot
 from app.payments.model import BusinessSubscription
 
@@ -178,7 +178,7 @@ async def test_real_demo_activated_subscription_remains_in_cabinet_payload(
             return profile
 
     monkeypatch.setattr(
-        "app.legacy_migration.profile_parity_v7._find_mapping",
+        "app.legacy_migration.parity_v7.enrich._find_mapping",
         mapping,
     )
     try:

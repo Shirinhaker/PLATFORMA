@@ -1,15 +1,10 @@
+"""Mediani R2 ga ko'chirish va natijani belgilash."""
+
 from __future__ import annotations
 
-import hashlib
 import sqlite3
-from collections.abc import Iterable
-from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path, PurePosixPath
-from tempfile import SpooledTemporaryFile
-from typing import BinaryIO
 
-import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,189 +12,27 @@ from app.advertisements.model import Advertisement
 from app.catalog.model import CatalogItem
 from app.core.config import Settings
 from app.legacy_migration.catalog_stage import ensure_media_mapping
+from app.legacy_migration.media.constants import (
+    CONTENT_TYPE_SUFFIXES,
+    ResolvedMedia,
+)
+from app.legacy_migration.media.resolvers import (
+    LocalMediaResolver,
+    TelegramMediaResolver,
+    _media_roots,
+    _resolver_for_reference,
+)
 from app.legacy_migration.model import (
     LegacyIdMap,
     MediaMigration,
     MediaMigrationState,
     MigrationRun,
 )
-from app.legacy_migration.reconcile import StageResult
+from app.legacy_migration.reconcile_parts.constants import StageResult
 from app.listings.model import ListingMedia
 from app.media.storage import R2Storage
 from app.messages.model import Message
 from app.stories.model import Story
-
-CONTENT_TYPE_SUFFIXES = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/gif": ".gif",
-    "image/webp": ".webp",
-    "video/mp4": ".mp4",
-    "video/webm": ".webm",
-}
-
-
-@dataclass(frozen=True)
-class ResolvedMedia:
-    stream: BinaryIO
-    content_type: str
-    size_bytes: int
-    sha256: str
-
-
-@dataclass(frozen=True)
-class MediaResolution:
-    media: ResolvedMedia | None
-    code: str
-
-
-def sniff_media_type(header: bytes) -> str | None:
-    if header.startswith(b"\xff\xd8\xff"):
-        return "image/jpeg"
-    if header.startswith(b"\x89PNG\r\n\x1a\n"):
-        return "image/png"
-    if header.startswith((b"GIF87a", b"GIF89a")):
-        return "image/gif"
-    if len(header) >= 12 and header.startswith(b"RIFF") and header[8:12] == b"WEBP":
-        return "image/webp"
-    if len(header) >= 12 and header[4:8] == b"ftyp":
-        return "video/mp4"
-    if header.startswith(b"\x1aE\xdf\xa3"):
-        return "video/webm"
-    return None
-
-
-class LocalMediaResolver:
-    def __init__(
-        self,
-        roots: Iterable[Path],
-        *,
-        max_bytes: int = 100 * 1024 * 1024,
-    ) -> None:
-        self.roots = tuple(Path(root).resolve() for root in roots)
-        self.max_bytes = max_bytes
-
-    async def resolve(self, reference: str) -> MediaResolution:
-        path = self._resolve_path(reference)
-        if path is None:
-            return MediaResolution(None, "media.path_outside_roots")
-        if not path.is_file():
-            return MediaResolution(None, "media.missing")
-        return _read_local_media(path, max_bytes=self.max_bytes)
-
-    def _resolve_path(self, reference: str) -> Path | None:
-        normalized = reference.replace("\\", "/").lstrip("/")
-        relative = PurePosixPath(normalized)
-        if not normalized or relative.is_absolute() or ".." in relative.parts:
-            return None
-
-        for root in self.roots:
-            parts = relative.parts
-            if parts and parts[0] == root.name:
-                parts = parts[1:]
-            candidate = root.joinpath(*parts).resolve()
-            if candidate == root or root in candidate.parents:
-                return candidate
-        return None
-
-
-class TelegramMediaResolver:
-    def __init__(
-        self,
-        bot_token: str,
-        *,
-        max_bytes: int = 100 * 1024 * 1024,
-        client: httpx.AsyncClient | None = None,
-    ) -> None:
-        self.bot_token = bot_token
-        self.max_bytes = max_bytes
-        self.client = client
-
-    async def resolve(self, reference: str) -> MediaResolution:
-        if not self.bot_token or not reference:
-            return MediaResolution(None, "media.telegram_unavailable")
-        owns_client = self.client is None
-        client = self.client or httpx.AsyncClient(timeout=30)
-        try:
-            response = await client.get(
-                f"https://api.telegram.org/bot{self.bot_token}/getFile",
-                params={"file_id": reference},
-            )
-            response.raise_for_status()
-            payload = response.json()
-            file_path = (payload.get("result") or {}).get("file_path")
-            if not payload.get("ok") or not file_path:
-                return MediaResolution(None, "media.missing")
-            async with client.stream(
-                "GET",
-                f"https://api.telegram.org/file/bot{self.bot_token}/{file_path}",
-            ) as download:
-                download.raise_for_status()
-                return await _read_async_media(
-                    download.aiter_bytes(),
-                    max_bytes=self.max_bytes,
-                )
-        except (httpx.HTTPError, ValueError, TypeError):
-            return MediaResolution(None, "media.telegram_failed")
-        finally:
-            if owns_client:
-                await client.aclose()
-
-
-def _read_local_media(path: Path, *, max_bytes: int) -> MediaResolution:
-    with path.open("rb") as source:
-        return _read_chunks(iter(lambda: source.read(1024 * 1024), b""), max_bytes)
-
-
-async def _read_async_media(chunks, *, max_bytes: int) -> MediaResolution:
-    stream = SpooledTemporaryFile(max_size=min(max_bytes, 8 * 1024 * 1024))
-    digest = hashlib.sha256()
-    header = b""
-    size = 0
-    async for chunk in chunks:
-        size += len(chunk)
-        if size > max_bytes:
-            stream.close()
-            return MediaResolution(None, "media.too_large")
-        if len(header) < 16:
-            header += chunk[: 16 - len(header)]
-        digest.update(chunk)
-        stream.write(chunk)
-    return _finished_media(stream, header, size, digest.hexdigest())
-
-
-def _read_chunks(chunks, max_bytes: int) -> MediaResolution:
-    stream = SpooledTemporaryFile(max_size=min(max_bytes, 8 * 1024 * 1024))
-    digest = hashlib.sha256()
-    header = b""
-    size = 0
-    for chunk in chunks:
-        size += len(chunk)
-        if size > max_bytes:
-            stream.close()
-            return MediaResolution(None, "media.too_large")
-        if len(header) < 16:
-            header += chunk[: 16 - len(header)]
-        digest.update(chunk)
-        stream.write(chunk)
-    return _finished_media(stream, header, size, digest.hexdigest())
-
-
-def _finished_media(
-    stream: BinaryIO,
-    header: bytes,
-    size: int,
-    digest: str,
-) -> MediaResolution:
-    content_type = sniff_media_type(header)
-    if content_type is None:
-        stream.close()
-        return MediaResolution(None, "media.invalid_type")
-    stream.seek(0)
-    return MediaResolution(
-        ResolvedMedia(stream, content_type, size, digest),
-        "",
-    )
 
 
 async def migrate_media(
@@ -464,21 +297,6 @@ async def _ensure_message_media_mappings(
         )
 
 
-def _resolver_for_reference(
-    record: MediaMigration,
-    reference: str,
-    *,
-    local,
-    telegram,
-):
-    if record.entity_type not in {"listing_media"}:
-        return local
-    normalized = reference.replace("\\", "/")
-    if normalized.startswith("/") or "/" in normalized:
-        return local
-    return telegram
-
-
 async def _mark_story_media_failure(
     session: AsyncSession,
     run: MigrationRun,
@@ -500,7 +318,7 @@ async def _mark_story_media_failure(
             story = await session.get(Story, mapping.target_id)
             if story is not None:
                 story.status = "failed"
-    from app.legacy_migration.reconcile import _ensure_issue
+    from app.legacy_migration.reconcile_parts.mapping import _ensure_issue
 
     await _ensure_issue(
         session,
@@ -509,7 +327,3 @@ async def _mark_story_media_failure(
         legacy_id=record.legacy_id,
         issue_code=issue_code,
     )
-
-
-def _media_roots(value: str) -> tuple[Path, ...]:
-    return tuple(Path(item.strip()) for item in value.split(",") if item.strip())

@@ -23,10 +23,14 @@ BACKEND = pathlib.Path(__file__).resolve().parent.parent
 
 
 def _model_modules() -> set[str]:
-    """`app/*/model.py` va `app/*/*_model.py` fayllari."""
+    """`app/*/model.py`, `app/*/model/` paketi va `app/*/*_model.py`."""
     found = set()
     for path in BACKEND.glob("app/*/model.py"):
         found.add(f"app.{path.parent.name}.model")
+    # Modellar paketga bo'linishi mumkin (masalan `education/model/`).
+    # Faqat faylni qidirsak, bunday domen ro'yxatdan tushib qoladi.
+    for path in BACKEND.glob("app/*/model/__init__.py"):
+        found.add(f"app.{path.parent.parent.name}.model")
     for path in BACKEND.glob("app/*/*_model.py"):
         found.add(f"app.{path.parent.name}.{path.stem}")
     return found

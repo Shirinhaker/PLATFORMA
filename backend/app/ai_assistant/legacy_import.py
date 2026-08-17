@@ -5,13 +5,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai_assistant.model import AIChatMessage
 from app.legacy_migration.model import MigrationRun
-from app.legacy_migration.reconcile import (
-    StageResult,
-    _ensure_issue,
-    _find_mapping,
-    _optional_int,
-    _unix_datetime,
-)
+from app.legacy_migration.reconcile_parts.constants import StageResult
+from app.legacy_migration.reconcile_parts.helpers import _optional_int, _unix_datetime
+from app.legacy_migration.reconcile_parts.mapping import _ensure_issue, _find_mapping
 
 
 async def import_ai_chat_history(

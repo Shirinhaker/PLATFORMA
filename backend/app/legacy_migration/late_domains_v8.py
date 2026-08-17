@@ -14,8 +14,8 @@ from app.legacy_migration.model import (
     MigrationStage,
     MigrationStatus,
 )
+from app.legacy_migration.parity_v7.entry import import_late_typed_domains
 from app.legacy_migration.profile_media_v8 import migrate_profile_images
-from app.legacy_migration.profile_parity_v7 import import_late_typed_domains
 from app.legacy_migration.real_source_v7 import open_real_snapshot
 from app.legacy_migration.runner_v6 import MIGRATION_SCHEMA_VERSION
 from app.legacy_migration.source import file_sha256

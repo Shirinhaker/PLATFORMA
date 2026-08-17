@@ -182,8 +182,9 @@ def test_story_migration_is_reversible_and_quarantines_unresolved_data():
     assert "story.media_missing" in stage_source
     assert 'mapping_status="quarantined"' in stage_source
     assert "source_row_hash" in stage_source
-    verify_source = (ROOT / "app" / "legacy_migration" / "verify.py").read_text(
-        encoding="utf-8"
+    verify_root = ROOT / "app" / "legacy_migration" / "verify_parts"
+    verify_source = "\n".join(
+        p.read_text(encoding="utf-8") for p in sorted(verify_root.rglob("*.py"))
     )
     assert '"story_view_count"' in verify_source
     assert '"story_report_count"' in verify_source

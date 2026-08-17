@@ -11,13 +11,12 @@ from app.accounts.model import Account, AccountType
 from app.catalog.model import CatalogGroup, CatalogItem
 from app.core.config import Settings
 from app.db.base import Base
-from app.legacy_migration.media_stage import (
+from app.legacy_migration.media.constants import MediaResolution, ResolvedMedia
+from app.legacy_migration.media.migrate import migrate_media
+from app.legacy_migration.media.reading import sniff_media_type
+from app.legacy_migration.media.resolvers import (
     LocalMediaResolver,
-    MediaResolution,
-    ResolvedMedia,
     TelegramMediaResolver,
-    migrate_media,
-    sniff_media_type,
 )
 from app.legacy_migration.model import (
     LegacyIdMap,

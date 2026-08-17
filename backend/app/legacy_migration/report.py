@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Any
 
 from app.legacy_migration.model import MigrationRun
-from app.legacy_migration.verify import VerificationReport
+from app.legacy_migration.verify_parts.constants import VerificationReport
 
 FORBIDDEN_REPORT_KEYS = {
     "name",

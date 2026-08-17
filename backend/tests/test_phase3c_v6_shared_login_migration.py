@@ -11,7 +11,7 @@ from app.legacy_migration.model import (
     MigrationStage,
     MigrationStatus,
 )
-from app.legacy_migration.profile_parity_v7 import (
+from app.legacy_migration.parity_v7.entry import (
     reconcile_accounts,
     reconcile_businesses,
 )
