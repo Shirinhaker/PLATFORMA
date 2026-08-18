@@ -193,7 +193,7 @@ def permission_templates(direction: str) -> tuple[PermissionTemplate, ...]:
         ),
     }[direction_kind(direction)]
     all_keys = tuple(item.key for item in permission_definitions(direction))
-    return templates + (PermissionTemplate("manager", "Menejer (barchasi)", all_keys),)
+    return (*templates, PermissionTemplate("manager", "Menejer (barchasi)", all_keys))
 
 
 ALL_PERMISSION_KEYS = frozenset(

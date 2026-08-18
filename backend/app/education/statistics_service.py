@@ -286,7 +286,7 @@ class EducationStatisticsService:
                     lesson_counts.get((int(student.id), month), 0),
                     package_lessons,
                 )
-                total += int(round(package_price / package_lessons * lessons))
+                total += round(package_price / package_lessons * lessons)
             return total
         if window.period == "day":
             return 0
@@ -307,7 +307,7 @@ class EducationStatisticsService:
 
     @staticmethod
     def _percent(present: int, total: int) -> int:
-        return int(round(present * 100 / total)) if total else 0
+        return round(present * 100 / total) if total else 0
 
     @staticmethod
     def _require_permission(permissions: tuple[str, ...] | None) -> None:

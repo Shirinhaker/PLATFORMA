@@ -137,7 +137,7 @@ class SessionsMixin(AuthServiceBase):
         self,
         raw_token: str,
         now: datetime,
-    ) -> SessionIdentity | None | object:
+    ) -> SessionIdentity | object | None:
         redis = self._redis_connection()
         if redis is None:
             return _CACHE_MISS

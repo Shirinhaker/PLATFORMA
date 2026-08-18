@@ -122,7 +122,7 @@ class ItemsMixin(InventoryServiceBase):
             stock_qty=_number(item.stock_qty),
             cost_price=item.cost_price if show_costs else 0,
             fifo_next_cost=int(fifo_next_cost or 0) if show_costs else 0,
-            fifo_value=int(round(float(fifo_value or 0))) if show_costs else 0,
+            fifo_value=round(float(fifo_value or 0)) if show_costs else 0,
             min_qty=_number(item.min_qty),
             image_url="",
             group_id=catalog.catalog_group_id,

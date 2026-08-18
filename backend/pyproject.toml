@@ -53,10 +53,6 @@ ignore = [
 
   # --- VAQTINCHA: qoldiq. Har birini alohida PR bilan tuzatib,
   # --- shu ro'yxatdan o'chirib boring. Yangi kod bularni buzmasligi kerak.
-  "RUF005",  # 1
-  "RUF036",  # 1  — None union oxirida emas
-  "RUF046",  # 4  — keraksiz int() konversiyasi
-  "RUF059",  # 1
   "UP031",   # 8  — eski % formatlash
   "UP042",   # 10 — str + Enum o'rniga StrEnum
 ]

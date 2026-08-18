@@ -54,7 +54,7 @@ def dining_prepared_items(
             continue
         quantity = wanted[item_id]
         price = parse_price_amount(item.get("price"))
-        line_total = int(round(price * quantity))
+        line_total = round(price * quantity)
         prepared.append(
             {
                 "item_id": item_id,

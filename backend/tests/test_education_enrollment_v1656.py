@@ -441,7 +441,7 @@ async def test_rejected_enrollment_frees_the_duplicate_guard(education):
 
 async def test_list_rows_keep_the_v1656_field_names(education):
     """Kabinet ekrani shu nomlarni kutadi — o'zgarsa ekran buziladi."""
-    service, engine, sessions = education
+    service, _engine, sessions = education
     await service.create(
         account_id=USER_ID,
         account_type=AccountType.USER,
