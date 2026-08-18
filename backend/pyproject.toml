@@ -54,7 +54,6 @@ ignore = [
   # --- VAQTINCHA: qoldiq. Har birini alohida PR bilan tuzatib,
   # --- shu ro'yxatdan o'chirib boring. Yangi kod bularni buzmasligi kerak.
   "B007",    # 1  — ishlatilmagan sikl o'zgaruvchisi
-  "F841",    # 3  — ishlatilmagan lokal o'zgaruvchi (avval tekshiring: nojo'ya ta'sir bormi?)
   "RUF005",  # 1
   "RUF036",  # 1  — None union oxirida emas
   "RUF046",  # 4  — keraksiz int() konversiyasi

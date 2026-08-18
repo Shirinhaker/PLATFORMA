@@ -138,7 +138,10 @@ class ProvidersMixin(QueueServiceBase):
         body: QueueProviderWrite,
     ) -> QueueProviderRead:
         async with self._session_factory() as session:
-            business = await self._business(session, business_account_id)
+            # Natija ishlatilmaydi, lekin chaqiruv SHART: `_business`
+            # biznes topilmasa 404, yo'nalish mos kelmasa xato beradi.
+            # 62-qatorda ham xuddi shunday ishlatilgan.
+            await self._business(session, business_account_id)
             provider = await self._repository.provider(
                 session,
                 provider_id=provider_id,

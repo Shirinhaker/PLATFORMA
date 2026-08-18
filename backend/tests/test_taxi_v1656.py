@@ -141,9 +141,6 @@ async def test_driver_validation_and_atomic_accept_commission_flow():
                 car_color="oq",
             ),
         )
-        driver = sync.scalar(
-            TaxiDriver.__table__.select().where(TaxiDriver.user_account_id == 2)
-        )
         sync.query(TaxiDriver).filter_by(user_account_id=2).update({"balance": 2_000})
         sync.commit()
 
