@@ -148,7 +148,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `business_opening` | `/api/v1/business-opening` | 278 | biznes ochish oqimi |
 | `business_online` | `/api/v1/business-online` | 3 764 | biznes onlayn vitrinasi ⚠️ |
 | `orders` | `/api/v1/orders` | 2 656 | buyurtmalar, status, bildirishnoma |
-| `queues` | `/api/v1/queues` | 2 890 | elektron navbat |
+| `queues` | `/api/v1/queues` | 2 893 | elektron navbat |
 | `dining` | `/api/v1/dining` | 2 313 | umumiy ovqatlanish (menyu, stol) |
 | `specialists` | `/api/v1/specialists` | 1 040 | mutaxassislar, bandlik |
 | `staff` | `/api/v1` | 1 819 | xodimlar, ruxsatlar (`permissions.py`) |
@@ -178,7 +178,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `db` | 116 | sessiya, `Base`, `all_models.py` |
 | `cache` | 72 | Redis client, rate limit |
 | `outbox` | 413 | outbox jadvali + fon worker |
-| `legacy_migration` | 7 802 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
+| `legacy_migration` | 7 801 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
 
 <!-- STATS:tugadi -->
 
