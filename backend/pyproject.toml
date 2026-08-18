@@ -53,7 +53,6 @@ ignore = [
 
   # --- VAQTINCHA: qoldiq. Har birini alohida PR bilan tuzatib,
   # --- shu ro'yxatdan o'chirib boring. Yangi kod bularni buzmasligi kerak.
-  "UP031",   # 8  — eski % formatlash
   "UP042",   # 10 — str + Enum o'rniga StrEnum
 ]
 
