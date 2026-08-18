@@ -7,6 +7,7 @@ zaxira bo'ladi.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import math
 from datetime import datetime
@@ -163,23 +164,17 @@ class SessionsMixin(AuthServiceBase):
             )
             identity = SessionIdentity.model_validate(cached)
         except (TypeError, ValueError, json.JSONDecodeError):
-            try:
+            with contextlib.suppress(Exception):
                 await redis.delete(cache_key)
-            except Exception:
-                pass
             return _CACHE_MISS
 
         if identity.expires_at <= now:
-            try:
+            with contextlib.suppress(Exception):
                 await redis.delete(cache_key)
-            except Exception:
-                pass
             return None
         if last_used_at <= now - _SESSION_TOUCH_INTERVAL:
-            try:
+            with contextlib.suppress(Exception):
                 await redis.delete(cache_key)
-            except Exception:
-                pass
             return _CACHE_MISS
         return identity
 

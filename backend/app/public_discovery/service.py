@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from collections.abc import Awaitable, Callable
-from contextlib import AbstractAsyncContextManager
+from contextlib import AbstractAsyncContextManager, suppress
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -208,10 +208,8 @@ class PublicDiscoveryService:
         try:
             return PublicSearchResponse.model_validate(json.loads(payload))
         except (TypeError, ValueError, json.JSONDecodeError):
-            try:
+            with suppress(Exception):
                 await redis.delete(cache_key)
-            except Exception:
-                pass
             return None
 
     async def _write_cache(

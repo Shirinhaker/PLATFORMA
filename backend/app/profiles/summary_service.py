@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from collections.abc import Callable
-from contextlib import AbstractAsyncContextManager
+from contextlib import AbstractAsyncContextManager, suppress
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -123,10 +123,8 @@ class ProfileSummaryService:
         try:
             return MeRead.model_validate(json.loads(payload))
         except (TypeError, ValueError, json.JSONDecodeError):
-            try:
+            with suppress(Exception):
                 await redis.delete(cache_key)
-            except Exception:
-                pass
             return _CACHE_MISS
 
     async def _write_cached_summary(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from datetime import timedelta
 
 from app.accounts.model import AccountType
@@ -87,10 +88,8 @@ class PublishingMixin(StoryServiceBase):
             )
         except Exception as exc:
             await self._mark_failed(story_id)
-            try:
+            with contextlib.suppress(Exception):
                 self._storage.delete_object(body.object_key)
-            except Exception:
-                pass
             if isinstance(exc, (StoryValidationError, UploadRejected)):
                 raise ApiError(400, "story_upload_rejected", str(exc)) from None
             raise ApiError(
@@ -126,10 +125,8 @@ class PublishingMixin(StoryServiceBase):
                 processed.thumbnail_object_key,
             }:
                 if key:
-                    try:
+                    with contextlib.suppress(Exception):
                         self._storage.delete_object(key)
-                    except Exception:
-                        pass
             if isinstance(exc, ApiError):
                 raise
             raise ApiError(
@@ -160,10 +157,8 @@ class PublishingMixin(StoryServiceBase):
             await session.commit()
         for key in keys:
             if key:
-                try:
+                with contextlib.suppress(Exception):
                     self._storage.delete_object(key)
-                except Exception:
-                    pass
 
     async def report(
         self,
