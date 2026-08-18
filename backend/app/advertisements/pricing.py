@@ -163,8 +163,8 @@ def calculate_ad_price(
     try:
         days = int(duration_days)
         rate = int(district_hour_rate)
-    except (TypeError, ValueError):
-        raise AdPricingError("Reklama narxi yoki davomiyligi noto'g'ri.")
+    except (TypeError, ValueError) as exc:
+        raise AdPricingError("Reklama narxi yoki davomiyligi noto'g'ri.") from exc
     if days not in VALID_AD_DURATIONS:
         raise AdPricingError("Kunlar 1, 3, 7, 14 yoki 30 bo'lishi kerak.")
     if rate < 0:
@@ -188,8 +188,8 @@ def calculate_ad_price(
 def _uz_timezone(tz_offset_seconds):
     try:
         return timezone(timedelta(seconds=int(tz_offset_seconds)))
-    except (TypeError, ValueError, OverflowError):
-        raise AdPricingError("Vaqt mintaqasi noto'g'ri.")
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise AdPricingError("Vaqt mintaqasi noto'g'ri.") from exc
 
 
 def first_schedule_start(
@@ -197,8 +197,8 @@ def first_schedule_start(
 ):
     try:
         selected_date = date.fromisoformat(str(start_date or "").strip())
-    except (TypeError, ValueError):
-        raise AdPricingError("Boshlanish sanasi noto'g'ri.")
+    except (TypeError, ValueError) as exc:
+        raise AdPricingError("Boshlanish sanasi noto'g'ri.") from exc
     start_hour = 0 if bool(daily_all_day) else full_hour(daily_start)
     local_start = datetime(
         selected_date.year,
@@ -221,8 +221,8 @@ def shift_schedule_start(
     try:
         requested = int(requested_start_at)
         approved = int(approved_at)
-    except (TypeError, ValueError):
-        raise AdPricingError("Reklama jadvali noto'g'ri.")
+    except (TypeError, ValueError) as exc:
+        raise AdPricingError("Reklama jadvali noto'g'ri.") from exc
     if approved <= requested:
         return requested
 
@@ -248,8 +248,8 @@ def schedule_end_at(*, actual_start_at, duration_days, hours_each_day, daily_all
         start = int(actual_start_at)
         days = int(duration_days)
         hours = int(hours_each_day)
-    except (TypeError, ValueError):
-        raise AdPricingError("Reklama jadvali noto'g'ri.")
+    except (TypeError, ValueError) as exc:
+        raise AdPricingError("Reklama jadvali noto'g'ri.") from exc
     if days not in VALID_AD_DURATIONS:
         raise AdPricingError("Kunlar 1, 3, 7, 14 yoki 30 bo'lishi kerak.")
     if bool(daily_all_day):

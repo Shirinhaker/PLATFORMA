@@ -157,7 +157,7 @@ class AdvertisementAuthoringService:
                     daily_all_day=body.daily_all_day,
                 )
             except AdPricingError as exc:
-                raise ApiError(400, "advertisement_schedule_invalid", str(exc))
+                raise ApiError(400, "advertisement_schedule_invalid", str(exc)) from exc
 
             advertisement = Advertisement(
                 owner_user_account_id=(
@@ -385,7 +385,7 @@ class AdvertisementAuthoringService:
                 district_hour_rate=rate,
             )
         except AdPricingError as exc:
-            raise ApiError(400, "advertisement_price_invalid", str(exc))
+            raise ApiError(400, "advertisement_price_invalid", str(exc)) from exc
 
     @staticmethod
     async def _hour_rate(session: AsyncSession) -> int:
