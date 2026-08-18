@@ -118,6 +118,16 @@ jobs:
         working-directory: backend
         run: python -m pytest tests -q
 
+      # Mypy bosqichma-bosqich yoyilmoqda (7.1): faqat allaqachon
+      # tozalangan domenlar tekshiriladi, shunda qamrov ortga qaytmaydi.
+      # Domen tugagach uning yo'li shu ro'yxatga qo'shiladi.
+      #
+      # Bu qadam `lint` da emas, chunki u yerda loyiha bog'liqliklari
+      # o'rnatilmaydi va mypy importlarni topa olmaydi.
+      - name: Mypy (tozalangan domenlar)
+        working-directory: backend
+        run: python -m mypy app/core app/db app/cache app/outbox
+
       - name: Verify frontend
         working-directory: frontend
         run: npm test

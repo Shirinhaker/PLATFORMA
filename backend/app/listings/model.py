@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     event,
+    update,
 )
 from sqlalchemy.orm import Mapped, attributes, mapped_column
 
@@ -175,8 +176,6 @@ def _assign_listing_public_id(_mapper, connection, target: Listing) -> None:
         return
     public_id = build_listing_public_id(target.id)
     connection.execute(
-        Listing.__table__.update()
-        .where(Listing.id == target.id)
-        .values(public_id=public_id)
+        update(Listing).where(Listing.id == target.id).values(public_id=public_id)
     )
     attributes.set_committed_value(target, "public_id", public_id)

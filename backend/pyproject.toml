@@ -29,6 +29,9 @@ test = [
   "fakeredis[lua]>=2.27,<3",
   # Qoplamani o'lchash uchun. Hisobot: docs/qoplama-hisoboti.md
   "pytest-cov>=6,<8",
+  # Tur tekshiruvi. Versiya qat'iy: mypy yangi versiyada yangi xato
+  # topishi mumkin va CI kutilmaganda qizil bo'lib qolardi.
+  "mypy==1.18.2",
 ]
 
 [project.scripts]
@@ -63,6 +66,12 @@ no_implicit_optional = true
 # Bosqichma-bosqich qat'iylashtiriladi:
 # disallow_untyped_defs = true
 exclude = ["migrations/", "app/legacy_migration/"]
+
+# `firebase_admin` tur stublarini tarqatmaydi. Bu bizning kodimizdagi
+# muammo emas, shuning uchun faqat shu kutubxona uchun ochib qo'yiladi.
+[[tool.mypy.overrides]]
+module = ["firebase_admin.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 addopts = "-ra"

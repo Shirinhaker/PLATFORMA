@@ -122,9 +122,9 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 |---|---|---|---|
 | `platform` | `/` | 55 | healthcheck, versiya, umumiy ma'lumot |
 | `public_discovery` | `/api/v1/public` | 2 325 | ommaviy qidiruv va kashfiyot |
-| `catalog` | `/api/v1/public/catalog` | 937 | mahsulot/xizmatlar katalogi |
+| `catalog` | `/api/v1/public/catalog` | 938 | mahsulot/xizmatlar katalogi |
 | `advertisements` | `/api/v1/public`, `/advertisements` | 1 545 | reklama e'lonlari + narxlash |
-| `listings` | `/api/v1` | 1 354 | e'lonlar, aktivatsiya |
+| `listings` | `/api/v1` | 1 353 | e'lonlar, aktivatsiya |
 | `stories` | `/api/v1/stories` | 1 633 | stories (video/rasm), processor |
 | `media` | `/api/v1/media` | 450 | R2 ga yuklash, download URL |
 
@@ -176,7 +176,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 |---|---|---|
 | `core` | 319 | `config.py`, `errors.py` (ApiError), `logging.py`, `middleware.py` |
 | `db` | 116 | sessiya, `Base`, `all_models.py` |
-| `cache` | 72 | Redis client, rate limit |
+| `cache` | 81 | Redis client, rate limit |
 | `outbox` | 413 | outbox jadvali + fon worker |
 | `legacy_migration` | 7 812 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
 
