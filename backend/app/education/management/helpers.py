@@ -20,14 +20,6 @@ from app.education.schemas import (
     EducationTeacherRead,
 )
 
-"""v1656 ta'lim boshqaruvini typed relatsion APIga ko'chirish.
-
-Dars jadvali guruhlardan hosil qilinadi. Davomat, o'quvchi to'lovi,
-o'qituvchi va maosh amallari o'z jadvallarida tenant bo'yicha ajratiladi.
-To'lov Kassa bilan, maosh esa Xarajatlar bilan bitta tranzaksiyada yoziladi.
-"""
-
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 

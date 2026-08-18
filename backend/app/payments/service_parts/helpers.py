@@ -18,19 +18,6 @@ from app.payments.schemas import (
     PaymentRequestRead,
 )
 
-"""To'lov so'rovi: yaratish, qayta yuborish va ko'rib chiqish.
-
-Oqim v1656 (`payment_api.py`) bilan bir xil:
-
-    tarif tanlanadi → chek yuklanadi → so'rov yaratiladi
-    → admin tasdiqlaydi yoki rad etadi
-    → tasdiqlansa xizmat yoqiladi
-
-Farqi bitta: chek fayli R2'da saqlanadi. v1656da u serverning lokal
-diskida turardi va bir nechta nusxa ishlaganda topilmasdi.
-"""
-
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 

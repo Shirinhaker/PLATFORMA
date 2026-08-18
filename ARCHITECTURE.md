@@ -149,7 +149,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `business_online` | `/api/v1/business-online` | 3 764 | biznes onlayn vitrinasi ⚠️ |
 | `orders` | `/api/v1/orders` | 2 656 | buyurtmalar, status, bildirishnoma |
 | `queues` | `/api/v1/queues` | 2 890 | elektron navbat |
-| `dining` | `/api/v1/dining` | 2 328 | umumiy ovqatlanish (menyu, stol) |
+| `dining` | `/api/v1/dining` | 2 313 | umumiy ovqatlanish (menyu, stol) |
 | `specialists` | `/api/v1/specialists` | 1 040 | mutaxassislar, bandlik |
 | `staff` | `/api/v1` | 1 819 | xodimlar, ruxsatlar (`permissions.py`) |
 | `inventory` | `/api/v1/warehouse` | 2 272 | ombor |
@@ -158,7 +158,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `expenses` | `/api/v1/expenses` | 679 | xarajatlar |
 | `statistics` | `/api/v1/statistics` | 935 | biznes statistikasi |
 | `documents` | `/api/v1/documents` | 1 252 | hujjatlar |
-| `education` | `/api/v1/education` | 6 077 | ta'lim markazlari ⚠️ (eng katta modul) |
+| `education` | `/api/v1/education` | 6 053 | ta'lim markazlari ⚠️ (eng katta modul) |
 | `taxi` | `/api/v1/taxi` | 1 669 | taksi |
 | `ai_assistant` | `/api/v1/ai-assistant` | 1 141 | AI yordamchi |
 | `cabinet_records` | — | 1 629 | kabinet yozuvlari (dual-write, codec) |
@@ -167,8 +167,8 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
-| `payments` | `/api/v1/payments` | 1 364 | to'lovlar, obunalar |
-| `admin` | `/api/v1/admin`, `/reports` | 2 893 | admin panel, moderatsiya, audit, hisobotlar |
+| `payments` | `/api/v1/payments` | 1 351 | to'lovlar, obunalar |
+| `admin` | `/api/v1/admin`, `/reports` | 2 880 | admin panel, moderatsiya, audit, hisobotlar |
 
 ### Infratuzilma (biznes-mantiq emas)
 

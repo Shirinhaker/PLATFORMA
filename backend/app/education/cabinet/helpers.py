@@ -6,17 +6,6 @@ from datetime import timedelta
 
 from app.core.errors import ApiError
 
-"""Ta'lim kabineti: guruh va o'quvchi boshqaruvi.
-
-Yozuvlar `education_groups`, `education_students` jadvallariga tushadi.
-Barcha metodlar chaqiruvchining tranzaksiyasida ishlaydi — kabinet
-amali bir nechta yozuvni birga o'zgartirganda hammasi birga qaytadi.
-
-Tekshiruvlar v1656 (`api.py:_education_group_payload`,
-`_education_student_payload`) bilan bir xil.
-"""
-
-
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
 

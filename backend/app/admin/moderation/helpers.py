@@ -10,19 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
 
-"""Akkaunt cheklovlari, ichki izohlar va kontent ko'rinishi.
-
-v1656 `moderation.py` bilan bir xil qoidalar:
-
-- `content_hidden` egasining kabinetidagi ma'lumotni **o'chirmaydi**,
-  faqat public qidiruv, xarita va takliflardan yashiradi;
-- `account_blocked` yozish amallarini to'xtatadi;
-- ikkalasi mustaqil — biri ikkinchisini yoqmaydi.
-
-Har bir o'zgarish audit jurnaliga yoziladi.
-"""
-
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 
