@@ -61,7 +61,6 @@ ignore = [
   "SIM102",  # 3  — ichma-ich if
   "SIM103",  # 2
   "SIM105",  # 10 — contextlib.suppress ishlatish mumkin
-  "SIM110",  # 1
   "SIM115",  # 2  — open() context manager'siz
   "SIM117",  # 2  — ichma-ich with
   "SIM401",  # 2  — dict.get() ishlatish mumkin

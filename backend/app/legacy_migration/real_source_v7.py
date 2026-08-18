@@ -85,10 +85,7 @@ def copy_real_source(
 
 
 def _is_explicit_demo(row, column_names: list[str]) -> bool:
-    for key in EXPLICIT_DEMO_FLAGS:
-        if key in column_names and _truthy(row[key]):
-            return True
-    return False
+    return any(key in column_names and _truthy(row[key]) for key in EXPLICIT_DEMO_FLAGS)
 
 
 def _truthy(value: object) -> bool:
