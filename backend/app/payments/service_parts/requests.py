@@ -57,16 +57,16 @@ class RequestsMixin(PaymentServiceBase):
                     "Tanlangan tarif hozir faol emas.",
                 )
             config = price.config or {}
-            if body.service_type == "subscription":
-                # v1656: tarif parametrlari kod bilan mos kelishi shart.
-                if body.plan_code != str(
-                    config.get("plan_code") or ""
-                ) or body.duration_months != int(config.get("duration_months") or 0):
-                    raise ApiError(
-                        400,
-                        "payment_price_mismatch",
-                        "Tarif parametrlari mos emas.",
-                    )
+            # v1656: tarif parametrlari kod bilan mos kelishi shart.
+            if body.service_type == "subscription" and (
+                body.plan_code != str(config.get("plan_code") or "")
+                or body.duration_months != int(config.get("duration_months") or 0)
+            ):
+                raise ApiError(
+                    400,
+                    "payment_price_mismatch",
+                    "Tarif parametrlari mos emas.",
+                )
             method = await session.scalar(
                 select(PaymentMethod).where(
                     PaymentMethod.id == body.payment_method_id,

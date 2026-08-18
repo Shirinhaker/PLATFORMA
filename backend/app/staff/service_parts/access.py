@@ -120,23 +120,24 @@ class AccessMixin(StaffServiceBase):
             raise ApiError(422, "staff_profession_required", "Lavozim nomini kiriting.")
         async with self._session_factory() as session:
             await self._business_profile(session, business_account_id)
-            if clean.casefold() not in {
-                value.casefold() for value in DEFAULT_PROFESSIONS
-            }:
-                if not await self._repository.profession_exists(
+            known = {value.casefold() for value in DEFAULT_PROFESSIONS}
+            if (
+                clean.casefold() not in known
+                and not await self._repository.profession_exists(
                     session,
                     business_account_id=business_account_id,
                     name=clean,
-                ):
-                    session.add(
-                        StaffProfession(
-                            business_account_id=business_account_id,
-                            name=clean,
-                            created_at=self._now(),
-                        )
+                )
+            ):
+                session.add(
+                    StaffProfession(
+                        business_account_id=business_account_id,
+                        name=clean,
+                        created_at=self._now(),
                     )
-                    try:
-                        await session.commit()
-                    except IntegrityError:
-                        await session.rollback()
+                )
+                try:
+                    await session.commit()
+                except IntegrityError:
+                    await session.rollback()
             return await self._profession_names(session, business_account_id)
