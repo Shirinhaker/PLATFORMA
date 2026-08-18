@@ -10,6 +10,7 @@ from sqlalchemy import (
     Index,
     String,
     event,
+    update,
 )
 from sqlalchemy.orm import Mapped, attributes, mapped_column
 
@@ -167,7 +168,7 @@ def _assign_catalog_item_public_id(_mapper, connection, target: CatalogItem) -> 
         return
     public_id = build_content_public_id(target.kind, target.id)
     connection.execute(
-        CatalogItem.__table__.update()
+        update(CatalogItem)
         .where(CatalogItem.id == target.id)
         .values(public_id=public_id)
     )

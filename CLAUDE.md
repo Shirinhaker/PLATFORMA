@@ -94,6 +94,7 @@ PR yuborishdan oldin:
 - `cd frontend && npm run build`
 - `git fetch origin main && python scripts/check_file_length.py`
 - `python scripts/update_architecture_stats.py --check`
+- `cd backend && python -m mypy app/core app/db app/cache app/outbox`
 
 Oxirgisi eskirgan bo'lsa, bayroqsiz chaqiring — raqamlarni o'zi tuzatadi.
 

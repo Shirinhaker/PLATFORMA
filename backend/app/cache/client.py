@@ -1,3 +1,6 @@
+from collections.abc import Awaitable
+from typing import cast
+
 from redis.asyncio import Redis
 
 
@@ -25,6 +28,9 @@ class RedisClient:
         if self.client is None:
             return False
         try:
-            return bool(await self.client.ping())
+            # redis-py stublari sync va async klientni bitta klass bilan
+            # tasvirlaydi, shuning uchun `Awaitable[bool] | bool` chiqadi.
+            # Bu yerda klient aniq async — `redis.asyncio.Redis`.
+            return bool(await cast(Awaitable[bool], self.client.ping()))
         except Exception:
             return False

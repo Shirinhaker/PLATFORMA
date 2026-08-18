@@ -1,5 +1,7 @@
 import time
+from collections.abc import Awaitable
 from dataclasses import dataclass
+from typing import cast
 
 from redis.asyncio import Redis
 
@@ -27,11 +29,12 @@ async def consume_rate_limit(
     window_seconds: int,
 ) -> RateLimitResult:
     bucket = int(time.time()) // window_seconds
-    count, ttl = await redis.eval(
-        SCRIPT,
-        1,
-        f"rate:{key}:{bucket}",
-        window_seconds,
+    # redis-py stublari sync va async klientni bitta klass bilan
+    # tasvirlaydi, shuning uchun `Awaitable[str] | str` chiqadi.
+    # Bu yerda klient aniq async.
+    count, ttl = await cast(
+        Awaitable[tuple[int, int]],
+        redis.eval(SCRIPT, 1, f"rate:{key}:{bucket}", window_seconds),
     )
     count = int(count)
     ttl = max(1, int(ttl))
