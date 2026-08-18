@@ -99,8 +99,8 @@ async def migrate_profile_images(
             continue
         try:
             legacy_id = int(row[1])
-        except (TypeError, ValueError):
-            raise RuntimeError("profile_media_owner_id_invalid")
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("profile_media_owner_id_invalid") from exc
 
         source_table, mapping_type, model, field, entity_type, slot = config
         if not _source_owner_exists(source, source_table, legacy_id):
