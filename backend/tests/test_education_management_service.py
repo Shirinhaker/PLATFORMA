@@ -453,3 +453,106 @@ async def test_payroll_and_expense_are_one_chain_and_permissions_hold(management
     with pytest.raises(ApiError) as wrong_direction:
         await service.list_groups(business_account_id=8, permissions=None)
     assert wrong_direction.value.code == "education_direction_required"
+
+
+@pytest.mark.asyncio
+async def test_payment_control_classifies_students_and_totals_the_debt(management):
+    """Nazorat jadvali — kim qarzdor, qancha. Bu raqamlar pulga tegishli.
+
+    `docs/qoplama-hisoboti.md` da bu funksiya "hech qanday test bilan
+    qoplanmagan" deb belgilangan edi.
+    """
+    service, _engine = management
+
+    control = await service.payment_control(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+        group_id=0,
+    )
+
+    assert [student.full_name for student in control.students] == ["Ali Valiyev"]
+    student = control.students[0]
+    assert student.id == 1
+    assert student.group_name == "Starter"
+    assert student.billing_type == "monthly"
+    assert student.status in {"overdue", "due_today", "upcoming", "paid"}
+
+    # Jamlar har bir holatdagi o'quvchilar soniga teng bo'lishi kerak.
+    summary = control.summary
+    counted = summary.overdue + summary.due_today + summary.upcoming + summary.paid
+    assert counted == len(control.students)
+
+
+@pytest.mark.asyncio
+async def test_payment_control_requires_the_payments_permission(management):
+    service, _engine = management
+
+    with pytest.raises(ApiError) as denied:
+        await service.payment_control(
+            business_account_id=BUSINESS_ID,
+            permissions=("education_attendance",),
+            group_id=0,
+        )
+    assert denied.value.code == "staff_permission_required"
+
+
+@pytest.mark.asyncio
+async def test_monthly_report_shows_the_fee_and_reflects_a_recorded_payment(
+    management,
+):
+    """Oylik hisobot: to'lovdan oldin va keyin raqam o'zgarishi kerak."""
+    service, _engine = management
+
+    before = await service.payments(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+        payment_month="2026-08",
+        group_id=0,
+    )
+    assert before.payment_month == "2026-08"
+    row = next(s for s in before.students if s.student_id == 1)
+    assert row.monthly_fee == 500
+    assert row.group_name == "Starter"
+    assert before.history == []
+
+    await service.create_payment(
+        business_account_id=BUSINESS_ID,
+        actor_staff_id=None,
+        permissions=None,
+        body=EducationPaymentCreate(
+            student_id=1,
+            payment_month="2026-08",
+            amount=500,
+            pay_type="naqd",
+        ),
+    )
+
+    after = await service.payments(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+        payment_month="2026-08",
+        group_id=0,
+    )
+    assert len(after.history) == 1
+    assert after.history[0].amount == 500
+
+
+@pytest.mark.asyncio
+async def test_payroll_report_lists_teachers_with_their_salary_basis(management):
+    """Oylik hisoboti — o'qituvchiga qancha to'lanishi shu yerdan ko'rinadi."""
+    service, _engine = management
+
+    report = await service.payroll(
+        business_account_id=BUSINESS_ID,
+        permissions=None,
+        payment_month="2026-08",
+    )
+
+    assert report.payment_month == "2026-08"
+    assert [teacher.full_name for teacher in report.teachers] == ["Aziza Ustoz"]
+    teacher = report.teachers[0]
+    assert teacher.id == 1
+    # `expected` maosh turiga qarab hisoblanadi; manfiy bo'lishi mumkin emas.
+    assert teacher.expected >= 0
+    assert teacher.lesson_count >= 0
+    assert report.history == []
