@@ -18,19 +18,19 @@ chunki bir nechta jadval **aynan bitta** nusxani ulashishi kerak —
 har bir jadval o'zi yaratsa, PostgreSQL'da nom to'qnashuvi bo'ladi.
 """
 
-from enum import Enum
+from enum import Enum, StrEnum
 
 from sqlalchemy import Enum as SqlEnum
 
 
-class OwnerState(str, Enum):
+class OwnerState(StrEnum):
     """Yozuv real akkauntga bog'langanmi."""
 
     LINKED = "linked"
     UNLINKED = "unlinked"
 
 
-class ReviewState(str, Enum):
+class ReviewState(StrEnum):
     """Yozuv qo'lda ko'rikni talab qiladimi."""
 
     READY = "ready"

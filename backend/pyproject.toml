@@ -50,10 +50,6 @@ ignore = [
   "RUF001",  # o'zbekcha matnlarda kirill/lotin belgilar aralashuvi
   "RUF002",
   "RUF003",
-
-  # --- VAQTINCHA: qoldiq. Har birini alohida PR bilan tuzatib,
-  # --- shu ro'yxatdan o'chirib boring. Yangi kod bularni buzmasligi kerak.
-  "UP042",   # 10 — str + Enum o'rniga StrEnum
 ]
 
 [tool.ruff.lint.isort]

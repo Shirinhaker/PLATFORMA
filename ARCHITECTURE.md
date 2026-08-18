@@ -178,7 +178,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `db` | 116 | sessiya, `Base`, `all_models.py` |
 | `cache` | 72 | Redis client, rate limit |
 | `outbox` | 413 | outbox jadvali + fon worker |
-| `legacy_migration` | 7 813 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
+| `legacy_migration` | 7 812 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
 
 <!-- STATS:tugadi -->
 
