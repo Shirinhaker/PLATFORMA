@@ -9,7 +9,7 @@ from app.db.base import Base
 from app.legacy_migration.model import ReviewState
 from app.listings.model import Listing, ListingMedia
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
-from app.public_discovery.repository import search_public_profiles
+from app.public_discovery.queries.search import search_public_profiles
 from app.public_discovery.schemas import PublicResultType, PublicSearchParams
 
 NOW = datetime(2026, 8, 2, 11, 0, tzinfo=UTC)

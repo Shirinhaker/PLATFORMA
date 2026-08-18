@@ -11,8 +11,9 @@ def test_ai_assistant_migration_follows_specialists_without_reading_sqlite_from_
 
 def test_complete_cabinet_migration_runs_the_typed_ai_history_import():
     root = Path(__file__).parents[1] / "app"
-    profile_source = (root / "legacy_migration/profile_parity_v7.py").read_text(
-        encoding="utf-8",
+    parity = root / "legacy_migration" / "parity_v7"
+    profile_source = "\n".join(
+        p.read_text(encoding="utf-8") for p in sorted(parity.rglob("*.py"))
     )
     runner_source = (root / "legacy_migration/runner_v6.py").read_text(
         encoding="utf-8",

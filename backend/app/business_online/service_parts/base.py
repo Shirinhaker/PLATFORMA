@@ -25,7 +25,7 @@ from app.education.repository import (
 from app.education.service import EducationEnrollmentService
 from app.inventory.live_sync import sync_business_inventory
 from app.listings.live_sync import LISTING_RESOURCES, sync_business_listings
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.profiles.model import BusinessProfile
 
 

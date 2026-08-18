@@ -32,7 +32,7 @@ from app.public_discovery.schemas import (
     PublicSpecialistPortfolio,
     PublicSpecialistSummary,
 )
-from app.queues.repository import active_provider_count, active_queue_count
+from app.queues.repository_parts import active_provider_count, active_queue_count
 from app.queues.service_parts.helpers import QUEUE_DIRECTIONS
 from app.specialists.model import (
     SpecialistCredential,

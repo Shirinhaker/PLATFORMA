@@ -121,7 +121,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
 | `platform` | `/` | 55 | healthcheck, versiya, umumiy ma'lumot |
-| `public_discovery` | `/api/v1/public` | 2 341 | ommaviy qidiruv va kashfiyot |
+| `public_discovery` | `/api/v1/public` | 2 327 | ommaviy qidiruv va kashfiyot |
 | `catalog` | `/api/v1/public/catalog` | 937 | mahsulot/xizmatlar katalogi |
 | `advertisements` | `/api/v1/public`, `/advertisements` | 1 545 | reklama e'lonlari + narxlash |
 | `listings` | `/api/v1` | 1 354 | e'lonlar, aktivatsiya |
@@ -139,7 +139,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `follows` | `/api/v1/follows` | 599 | obuna, kuzatuvchilar |
 | `messages` | `/api/v1/messages` | 1 143 | xabarlar |
 | `reviews` | `/api/v1/reviews` | 833 | sharhlar, reyting |
-| `notifications` | `/api/v1/notifications` | 2 128 | bildirishnomalar + push worker |
+| `notifications` | `/api/v1/notifications` | 2 225 | bildirishnomalar + push worker |
 
 ### Biznes kabineti
 
@@ -148,7 +148,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `business_opening` | `/api/v1/business-opening` | 278 | biznes ochish oqimi |
 | `business_online` | `/api/v1/business-online` | 3 764 | biznes onlayn vitrinasi ⚠️ |
 | `orders` | `/api/v1/orders` | 2 656 | buyurtmalar, status, bildirishnoma |
-| `queues` | `/api/v1/queues` | 2 783 | elektron navbat |
+| `queues` | `/api/v1/queues` | 2 890 | elektron navbat |
 | `dining` | `/api/v1/dining` | 2 328 | umumiy ovqatlanish (menyu, stol) |
 | `specialists` | `/api/v1/specialists` | 1 040 | mutaxassislar, bandlik |
 | `staff` | `/api/v1` | 1 819 | xodimlar, ruxsatlar (`permissions.py`) |
@@ -158,9 +158,9 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `expenses` | `/api/v1/expenses` | 679 | xarajatlar |
 | `statistics` | `/api/v1/statistics` | 935 | biznes statistikasi |
 | `documents` | `/api/v1/documents` | 1 252 | hujjatlar |
-| `education` | `/api/v1/education` | 5 833 | ta'lim markazlari ⚠️ (eng katta modul) |
-| `taxi` | `/api/v1/taxi` | 1 673 | taksi |
-| `ai_assistant` | `/api/v1/ai-assistant` | 1 145 | AI yordamchi |
+| `education` | `/api/v1/education` | 6 077 | ta'lim markazlari ⚠️ (eng katta modul) |
+| `taxi` | `/api/v1/taxi` | 1 669 | taksi |
+| `ai_assistant` | `/api/v1/ai-assistant` | 1 141 | AI yordamchi |
 | `cabinet_records` | — | 1 629 | kabinet yozuvlari (dual-write, codec) |
 
 ### To'lov va admin
@@ -168,7 +168,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
 | `payments` | `/api/v1/payments` | 1 364 | to'lovlar, obunalar |
-| `admin` | `/api/v1/admin`, `/reports` | 2 789 | admin panel, moderatsiya, audit, hisobotlar |
+| `admin` | `/api/v1/admin`, `/reports` | 2 893 | admin panel, moderatsiya, audit, hisobotlar |
 
 ### Infratuzilma (biznes-mantiq emas)
 
@@ -178,7 +178,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `db` | 116 | sessiya, `Base`, `all_models.py` |
 | `cache` | 72 | Redis client, rate limit |
 | `outbox` | 413 | outbox jadvali + fon worker |
-| `legacy_migration` | 7 424 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
+| `legacy_migration` | 7 802 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
 
 <!-- STATS:tugadi -->
 
@@ -217,9 +217,9 @@ Domen papkalari va hajmi:
 
 | Papka | Qator | Papka | Qator |
 |---|---|---|---|
-| `profiles` | 33 630⚠️ | `orders` | 4 963 |
+| `profiles` | 33 685⚠️ | `orders` | 4 963 |
 | `legacy/public` | 9 093⚠️ | `dining` | 2 323 |
-| `api` | 6 383 | `listings` | 2 787 |
+| `api` | 6 467 | `listings` | 2 787 |
 | `admin` | 3 848 | `taxi` | 2 703 |
 | `app` | 3 131 | `queues` | 1 802 |
 | `auth` | 1 623 | `education` | 4 073 |

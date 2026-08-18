@@ -15,7 +15,7 @@ from app.legacy_migration.report import (
     render_json,
     render_markdown,
 )
-from app.legacy_migration.verify import GateResult, VerificationReport
+from app.legacy_migration.verify_parts.constants import GateResult, VerificationReport
 
 
 def run():

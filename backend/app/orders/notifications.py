@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.notifications.repository import NotificationRepository
+from app.notifications.repository_parts import NotificationRepository
 from app.orders.model import Order
 
 

@@ -20,11 +20,8 @@ from app.legacy_migration.model import (
     OwnerState,
     ReviewState,
 )
-from app.legacy_migration.verify import (
-    VerificationInput,
-    evaluate_gates,
-    verify_migration,
-)
+from app.legacy_migration.verify_parts.constants import VerificationInput
+from app.legacy_migration.verify_parts.gates import evaluate_gates, verify_migration
 from app.listings.model import Listing
 
 

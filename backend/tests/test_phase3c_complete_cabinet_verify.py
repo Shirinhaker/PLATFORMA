@@ -1,8 +1,6 @@
-from app.legacy_migration.verify import (
-    VerificationInput,
-    _inspect_cabinet_value,
-    evaluate_gates,
-)
+from app.legacy_migration.verify_parts.cabinet import _inspect_cabinet_value
+from app.legacy_migration.verify_parts.constants import VerificationInput
+from app.legacy_migration.verify_parts.gates import evaluate_gates
 
 
 def clean_values(**overrides) -> VerificationInput:

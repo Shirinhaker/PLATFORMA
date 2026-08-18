@@ -6,9 +6,10 @@ from io import BytesIO
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.legacy_migration.media_stage import sniff_media_type
+from app.legacy_migration.media.reading import sniff_media_type
 from app.legacy_migration.model import MigrationRun
-from app.legacy_migration.reconcile import StageResult, _find_mapping
+from app.legacy_migration.reconcile_parts.constants import StageResult
+from app.legacy_migration.reconcile_parts.mapping import _find_mapping
 from app.media.storage import (
     MAX_PROFILE_IMAGE_BYTES,
     PROFILE_IMAGE_TYPES,

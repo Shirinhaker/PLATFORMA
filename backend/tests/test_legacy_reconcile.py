@@ -15,10 +15,8 @@ from app.legacy_migration.model import (
     MigrationStage,
     MigrationStatus,
 )
-from app.legacy_migration.reconcile import (
-    reconcile_accounts,
-    reconcile_businesses,
-)
+from app.legacy_migration.reconcile_parts.accounts import reconcile_accounts
+from app.legacy_migration.reconcile_parts.businesses import reconcile_businesses
 from app.profiles.model import BusinessProfile, UserProfile
 
 NOW = datetime(2026, 7, 29, 0, 0, tzinfo=UTC)

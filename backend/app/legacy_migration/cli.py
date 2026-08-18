@@ -29,10 +29,7 @@ from app.legacy_migration.source import (
     create_snapshot,
     file_sha256,
 )
-from app.legacy_migration.verify import (
-    GateResult,
-    VerificationReport,
-)
+from app.legacy_migration.verify_parts.constants import GateResult, VerificationReport
 from app.media.storage import build_r2_storage
 
 

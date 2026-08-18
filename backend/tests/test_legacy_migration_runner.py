@@ -17,7 +17,7 @@ from app.legacy_migration.runner import (
     build_database_runner,
 )
 from app.legacy_migration.source import SnapshotInfo
-from app.legacy_migration.verify import VerificationReport
+from app.legacy_migration.verify_parts.constants import VerificationReport
 
 
 def snapshot(tmp_path: Path) -> SnapshotInfo:

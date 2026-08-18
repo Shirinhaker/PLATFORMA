@@ -32,7 +32,7 @@ from app.notifications.model import (
 )
 from app.orders.model import Order
 from app.profiles.model import BusinessProfile, ProfileLink, UserProfile
-from app.public_discovery.repository import load_public_profile
+from app.public_discovery.queries.profile import load_public_profile
 from app.public_ids import build_content_public_id, build_profile_public_id
 from app.queues.model import (
     QueueCounter,
@@ -41,7 +41,7 @@ from app.queues.model import (
     QueueProvider,
     QueueProviderService,
 )
-from app.queues.repository import QueueRepository
+from app.queues.repository_parts import QueueRepository
 from app.queues.router import router as queues_router
 from app.queues.schemas import (
     QueueCreate,
@@ -813,10 +813,10 @@ def test_queue_router_exposes_typed_public_customer_and_business_endpoints():
 
 
 def test_queue_repository_uses_atomic_upsert_not_max_scan_for_live_numbers():
-    source = Path(QueueRepository.__module__.replace(".", "/") + ".py")
-    repository_source = (
-        Path(__file__).resolve().parents[1] / "app" / "queues" / source.name
-    ).read_text(encoding="utf-8")
+    root = Path(__file__).resolve().parents[1] / "app" / "queues" / "repository_parts"
+    repository_source = "\n".join(
+        p.read_text(encoding="utf-8") for p in sorted(root.rglob("*.py"))
+    )
     lowered = repository_source.casefold()
 
     assert "on_conflict_do_update" in repository_source

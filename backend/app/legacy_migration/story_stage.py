@@ -7,16 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.legacy_migration.catalog_stage import ensure_media_mapping
 from app.legacy_migration.model import MigrationRun
-from app.legacy_migration.reconcile import (
-    StageResult,
-    _ensure_issue,
-    _find_mapping,
-    _source_rows,
+from app.legacy_migration.reconcile_parts.constants import StageResult
+from app.legacy_migration.reconcile_parts.helpers import (
     _text,
     _unix_datetime,
-    _upsert_mapping,
     source_row_hash,
 )
+from app.legacy_migration.reconcile_parts.mapping import (
+    _ensure_issue,
+    _find_mapping,
+    _upsert_mapping,
+)
+from app.legacy_migration.reconcile_parts.source import _source_rows
 from app.stories.model import Story, StoryReport, StoryView
 
 
