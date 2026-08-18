@@ -57,9 +57,7 @@ ignore = [
   "RUF036",  # 1  — None union oxirida emas
   "RUF046",  # 4  — keraksiz int() konversiyasi
   "RUF059",  # 1
-  "SIM103",  # 2
   "SIM105",  # 10 — contextlib.suppress ishlatish mumkin
-  "SIM115",  # 2  — open() context manager'siz
   "UP031",   # 8  — eski % formatlash
   "UP042",   # 10 — str + Enum o'rniga StrEnum
 ]

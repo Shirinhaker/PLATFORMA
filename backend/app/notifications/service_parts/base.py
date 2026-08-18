@@ -130,6 +130,8 @@ class NotificationServiceBase:
             return False
         if row.price_max and (price is None or price > row.price_max):
             return False
-        if row.keyword and row.keyword.casefold() not in haystack:
+        # Yuqorida to'rtta bir xil shaklli guard bor — oxirgisini
+        # `return not (...)` ga aylantirish zanjirni buzadi.
+        if row.keyword and row.keyword.casefold() not in haystack:  # noqa: SIM103
             return False
         return True

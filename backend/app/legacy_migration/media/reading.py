@@ -35,7 +35,13 @@ def _read_local_media(path: Path, *, max_bytes: int) -> MediaResolution:
 
 
 async def _read_async_media(chunks, *, max_bytes: int) -> MediaResolution:
-    stream = SpooledTemporaryFile(max_size=min(max_bytes, 8 * 1024 * 1024))
+    # Oqim ataylab context manager'siz: u funksiyadan uzoq yashaydi —
+    # `_finished_media` uni `ResolvedMedia` ichida qaytaradi va
+    # `migrate.py` uni R2 ga yuklashda o'qiydi. `with` uni erta yopib,
+    # media ko'chirishni buzardi.
+    stream = SpooledTemporaryFile(  # noqa: SIM115
+        max_size=min(max_bytes, 8 * 1024 * 1024)
+    )
     digest = hashlib.sha256()
     header = b""
     size = 0
@@ -52,7 +58,13 @@ async def _read_async_media(chunks, *, max_bytes: int) -> MediaResolution:
 
 
 def _read_chunks(chunks, max_bytes: int) -> MediaResolution:
-    stream = SpooledTemporaryFile(max_size=min(max_bytes, 8 * 1024 * 1024))
+    # Oqim ataylab context manager'siz: u funksiyadan uzoq yashaydi —
+    # `_finished_media` uni `ResolvedMedia` ichida qaytaradi va
+    # `migrate.py` uni R2 ga yuklashda o'qiydi. `with` uni erta yopib,
+    # media ko'chirishni buzardi.
+    stream = SpooledTemporaryFile(  # noqa: SIM115
+        max_size=min(max_bytes, 8 * 1024 * 1024)
+    )
     digest = hashlib.sha256()
     header = b""
     size = 0
