@@ -231,7 +231,7 @@ class StudentsMixin(EducationCabinetServiceBase):
         current: EducationStudent | None,
     ) -> dict[str, Any]:
         def value(key: str, fallback: Any) -> Any:
-            return data[key] if key in data else fallback
+            return data.get(key, fallback)
 
         full_name = _text(value("full_name", current.full_name if current else ""), 120)
         if not full_name:

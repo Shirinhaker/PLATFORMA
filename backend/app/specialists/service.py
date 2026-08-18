@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from contextlib import AbstractAsyncContextManager
+from contextlib import AbstractAsyncContextManager, suppress
 from datetime import UTC, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -443,7 +443,5 @@ class SpecialistService:
     def _delete_safely(self, object_key: str) -> None:
         if not object_key:
             return
-        try:
+        with suppress(Exception):
             self._object_deleter(object_key)
-        except Exception:
-            pass

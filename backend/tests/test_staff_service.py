@@ -25,9 +25,13 @@ class ExpiringRow(SimpleNamespace):
         object.__setattr__(self, "_expired", True)
 
     def __getattribute__(self, name: str):
-        if name not in {"_expired", "expire", "__class__", "__dict__"}:
-            if object.__getattribute__(self, "_expired"):
-                raise AssertionError(f"expired attribute accessed: {name}")
+        if name not in {
+            "_expired",
+            "expire",
+            "__class__",
+            "__dict__",
+        } and object.__getattribute__(self, "_expired"):
+            raise AssertionError(f"expired attribute accessed: {name}")
         return object.__getattribute__(self, name)
 
 

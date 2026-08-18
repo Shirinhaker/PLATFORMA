@@ -42,9 +42,10 @@ def _imports_legacy_migration(path: Path) -> bool:
         if isinstance(node, ast.ImportFrom):
             if (node.module or "").startswith("app.legacy_migration"):
                 return True
-        elif isinstance(node, ast.Import):
-            if any(a.name.startswith("app.legacy_migration") for a in node.names):
-                return True
+        elif isinstance(node, ast.Import) and any(
+            a.name.startswith("app.legacy_migration") for a in node.names
+        ):
+            return True
     return False
 
 

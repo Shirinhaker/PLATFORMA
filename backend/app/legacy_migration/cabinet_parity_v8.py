@@ -77,7 +77,10 @@ def _user_notification_visible(
     if actor_kind and actor_kind != "user":
         return False
     actor_id = _integer(row.get("actor_id"))
-    if actor_kind == "user" and actor_id and actor_id != legacy_user_id:
+    # Guard-zanjirining oxirgi bo'g'ini. SIM103 uni `return not (...)`
+    # ga aylantirishni taklif qiladi — unda yuqoridagi guardlardan
+    # farq qilib, o'qish qiyinlashadi.
+    if actor_kind == "user" and actor_id and actor_id != legacy_user_id:  # noqa: SIM103
         return False
     return True
 

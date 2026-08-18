@@ -121,25 +121,25 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
 | `platform` | `/` | 55 | healthcheck, versiya, umumiy ma'lumot |
-| `public_discovery` | `/api/v1/public` | 2 327 | ommaviy qidiruv va kashfiyot |
+| `public_discovery` | `/api/v1/public` | 2 325 | ommaviy qidiruv va kashfiyot |
 | `catalog` | `/api/v1/public/catalog` | 937 | mahsulot/xizmatlar katalogi |
 | `advertisements` | `/api/v1/public`, `/advertisements` | 1 545 | reklama e'lonlari + narxlash |
 | `listings` | `/api/v1` | 1 354 | e'lonlar, aktivatsiya |
-| `stories` | `/api/v1/stories` | 1 639 | stories (video/rasm), processor |
+| `stories` | `/api/v1/stories` | 1 633 | stories (video/rasm), processor |
 | `media` | `/api/v1/media` | 450 | R2 ga yuklash, download URL |
 
 ### Foydalanuvchi va profil
 
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
-| `auth` | `/api/v1/auth` | 2 305 | Telegram auth, sessiya, xavfsizlik, shared login |
+| `auth` | `/api/v1/auth` | 2 300 | Telegram auth, sessiya, xavfsizlik, shared login |
 | `accounts` | — | 128 | account modeli (router yo'q) |
-| `profiles` | `/api/v1` | 1 207 | foydalanuvchi/biznes profillari |
+| `profiles` | `/api/v1` | 1 205 | foydalanuvchi/biznes profillari |
 | `account_settings` | `/api/v1/account-settings` | 266 | sozlamalar |
 | `follows` | `/api/v1/follows` | 599 | obuna, kuzatuvchilar |
 | `messages` | `/api/v1/messages` | 1 143 | xabarlar |
 | `reviews` | `/api/v1/reviews` | 833 | sharhlar, reyting |
-| `notifications` | `/api/v1/notifications` | 2 225 | bildirishnomalar + push worker |
+| `notifications` | `/api/v1/notifications` | 2 227 | bildirishnomalar + push worker |
 
 ### Biznes kabineti
 
@@ -150,8 +150,8 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `orders` | `/api/v1/orders` | 2 656 | buyurtmalar, status, bildirishnoma |
 | `queues` | `/api/v1/queues` | 2 893 | elektron navbat |
 | `dining` | `/api/v1/dining` | 2 313 | umumiy ovqatlanish (menyu, stol) |
-| `specialists` | `/api/v1/specialists` | 1 040 | mutaxassislar, bandlik |
-| `staff` | `/api/v1` | 1 819 | xodimlar, ruxsatlar (`permissions.py`) |
+| `specialists` | `/api/v1/specialists` | 1 038 | mutaxassislar, bandlik |
+| `staff` | `/api/v1` | 1 820 | xodimlar, ruxsatlar (`permissions.py`) |
 | `inventory` | `/api/v1/warehouse` | 2 272 | ombor |
 | `cash_register` | `/api/v1/cash-register` | 1 360 | kassa |
 | `debt_ledger` | `/api/v1/debt-ledger` | 907 | qarzlar daftari |
@@ -161,7 +161,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `education` | `/api/v1/education` | 6 053 | ta'lim markazlari ⚠️ (eng katta modul) |
 | `taxi` | `/api/v1/taxi` | 1 669 | taksi |
 | `ai_assistant` | `/api/v1/ai-assistant` | 1 141 | AI yordamchi |
-| `cabinet_records` | — | 1 629 | kabinet yozuvlari (dual-write, codec) |
+| `cabinet_records` | — | 1 631 | kabinet yozuvlari (dual-write, codec) |
 
 ### To'lov va admin
 
@@ -178,7 +178,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `db` | 116 | sessiya, `Base`, `all_models.py` |
 | `cache` | 72 | Redis client, rate limit |
 | `outbox` | 413 | outbox jadvali + fon worker |
-| `legacy_migration` | 7 801 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
+| `legacy_migration` | 7 813 | eski v1656 tizimidan ma'lumot ko'chirish ⚠️ |
 
 <!-- STATS:tugadi -->
 

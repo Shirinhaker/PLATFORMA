@@ -106,7 +106,7 @@ class GroupsMixin(EducationCabinetServiceBase):
         current: EducationGroup | None,
     ) -> dict[str, Any]:
         def value(key: str, fallback: Any) -> Any:
-            return data[key] if key in data else fallback
+            return data.get(key, fallback)
 
         name = _text(value("name", current.name if current else ""), 80)
         if not name:

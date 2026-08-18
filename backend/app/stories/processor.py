@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import math
 import subprocess
 import tempfile
@@ -277,10 +278,8 @@ class StoryMediaProcessor:
             except Exception:
                 for key in {media_key, thumbnail_key}:
                     if key:
-                        try:
+                        with contextlib.suppress(Exception):
                             self._storage.delete_object(key)
-                        except Exception:
-                            pass
                 raise
             self._storage.delete_object(object_key)
             return ProcessedStoryMedia(
