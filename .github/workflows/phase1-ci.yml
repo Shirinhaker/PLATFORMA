@@ -41,16 +41,6 @@ jobs:
       - name: Architecture stats freshness
         run: python scripts/update_architecture_stats.py --check
 
-      # Mypy bosqichma-bosqich yoyilmoqda (7.1). Bu yerda faqat allaqachon
-      # tozalangan domenlar tekshiriladi — shunda qamrov ortga qaytmaydi.
-      # Domen qo'shilganda uning yo'li shu ro'yxatga qo'shiladi.
-      - name: Install mypy
-        run: python -m pip install mypy==1.18.2
-
-      - name: Mypy (tozalangan domenlar)
-        working-directory: backend
-        run: python -m mypy app/core app/db app/cache app/outbox
-
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -127,6 +117,16 @@ jobs:
       - name: Verify backend
         working-directory: backend
         run: python -m pytest tests -q
+
+      # Mypy bosqichma-bosqich yoyilmoqda (7.1): faqat allaqachon
+      # tozalangan domenlar tekshiriladi, shunda qamrov ortga qaytmaydi.
+      # Domen tugagach uning yo'li shu ro'yxatga qo'shiladi.
+      #
+      # Bu qadam `lint` da emas, chunki u yerda loyiha bog'liqliklari
+      # o'rnatilmaydi va mypy importlarni topa olmaydi.
+      - name: Mypy (tozalangan domenlar)
+        working-directory: backend
+        run: python -m mypy app/core app/db app/cache app/outbox
 
       - name: Verify frontend
         working-directory: frontend
