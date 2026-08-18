@@ -21,14 +21,16 @@ async def run(
     database = Database(settings.database_url)
     await database.start()
     try:
-        async with database.session() as lock_session:
-            async with normalization_lock(lock_session):
-                return await run_locked(
-                    database,
-                    execute=execute,
-                    verify_only=verify_only,
-                    batch_size=batch_size,
-                )
+        async with (
+            database.session() as lock_session,
+            normalization_lock(lock_session),
+        ):
+            return await run_locked(
+                database,
+                execute=execute,
+                verify_only=verify_only,
+                batch_size=batch_size,
+            )
     finally:
         await database.stop()
 
