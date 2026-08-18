@@ -10,21 +10,6 @@ from decimal import ROUND_HALF_EVEN, ROUND_HALF_UP, Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-"""Ovqatlanish zanjiri: ofitsiant → oshpaz → kassa → ombor.
-
-Oqim v1656 (`api.py:3503-3860`) bilan bir xil:
-
-    ofitsiant stolga zakaz ochadi
-    → oshpaz "tayyor" deb belgilaydi
-    → kassir to'lovni tasdiqlaydi (ombor va kassa shu payt yoziladi)
-    → kassir hisobni yakunlaydi va stol bo'shaydi
-
-Migratsiyagacha zanjirning oxirgi uchtasi umuman yo'q edi: `kitchen_status`
-hech qachon `done`, `payment_status` hech qachon `confirmed` bo'lmagani
-uchun stol abadiy band qolardi.
-"""
-
-
 SessionFactory = Callable[[], AbstractAsyncContextManager[AsyncSession]]
 
 
