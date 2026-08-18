@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import (
@@ -48,12 +48,12 @@ __all__ = [
 ]
 
 
-class MigrationEnvironment(str, Enum):
+class MigrationEnvironment(StrEnum):
     STAGING = "staging"
     PRODUCTION = "production"
 
 
-class MigrationStage(str, Enum):
+class MigrationStage(StrEnum):
     SNAPSHOT = "snapshot"
     INVENTORY = "inventory"
     ACCOUNTS = "accounts"
@@ -65,14 +65,14 @@ class MigrationStage(str, Enum):
     VERIFY = "verify"
 
 
-class MigrationStatus(str, Enum):
+class MigrationStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
 
 
-class MediaMigrationState(str, Enum):
+class MediaMigrationState(StrEnum):
     PENDING = "pending"
     COPIED = "copied"
     MISSING = "missing"

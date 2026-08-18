@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from math import ceil
 
 from pydantic import (
@@ -10,7 +10,7 @@ from pydantic import (
 )
 
 
-class PublicResultKind(str, Enum):
+class PublicResultKind(StrEnum):
     USER = "user"
     BUSINESS = "business"
     PRODUCT = "product"
@@ -18,7 +18,7 @@ class PublicResultKind(str, Enum):
     LISTING = "listing"
 
 
-class PublicResultType(str, Enum):
+class PublicResultType(StrEnum):
     ALL = "all"
     USER = "user"
     BUSINESS = "business"

@@ -73,23 +73,23 @@ def prune_demo_records(
 
     linked = _ids(
         cursor,
-        "SELECT id FROM users WHERE id IN (%s) AND tg_id IS NOT NULL" % _joined(users),
+        f"SELECT id FROM users WHERE id IN ({_joined(users)}) AND tg_id IS NOT NULL",
     )
     if linked:
         raise PruneAbort("demo_prune_would_drop_linked_account:" + _joined(linked))
 
     businesses = _ids(
         cursor,
-        "SELECT id FROM businesses WHERE user_id IN (%s)" % _joined(users),
+        f"SELECT id FROM businesses WHERE user_id IN ({_joined(users)})",
     )
-    owner_filter = "user_id IN (%s)" % _joined(users)
+    owner_filter = f"user_id IN ({_joined(users)})"
     if businesses:
-        owner_filter += " OR business_id IN (%s)" % _joined(businesses)
+        owner_filter += f" OR business_id IN ({_joined(businesses)})"
     listings = _ids(cursor, "SELECT id FROM listings WHERE " + owner_filter)
     items = (
         _ids(
             cursor,
-            "SELECT id FROM items WHERE business_id IN (%s)" % _joined(businesses),
+            f"SELECT id FROM items WHERE business_id IN ({_joined(businesses)})",
         )
         if businesses
         else []
@@ -106,9 +106,7 @@ def prune_demo_records(
         values = groups[group]
         if not values or not _table_exists(cursor, table):
             continue
-        cursor.execute(
-            'DELETE FROM "%s" WHERE "%s" IN (%s)' % (table, column, _joined(values))
-        )
+        cursor.execute(f'DELETE FROM "{table}" WHERE "{column}" IN ({_joined(values)})')
         if cursor.rowcount:
             removed[table] = cursor.rowcount
     connection.commit()
@@ -122,14 +120,15 @@ def main() -> None:
     try:
         removed = prune_demo_records(connection)
     except PruneAbort as abort:
-        raise SystemExit("PHASE3C_V8_ERROR=%s" % abort) from abort
+        raise SystemExit(f"PHASE3C_V8_ERROR={abort}") from abort
     finally:
         connection.close()
     if not removed:
         print("DEMO_PRUNE_SKIPPED reason=no_match")
         return
     print(
-        "DEMO_PRUNE_OK " + " ".join("%s=%d" % pair for pair in sorted(removed.items()))
+        "DEMO_PRUNE_OK "
+        + " ".join(f"{table}={count}" for table, count in sorted(removed.items()))
     )
 
 

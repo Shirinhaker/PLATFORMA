@@ -1,10 +1,10 @@
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-class ReviewTargetKind(str, Enum):
+class ReviewTargetKind(StrEnum):
     BUSINESS = "business"
     SPECIALIST = "specialist"
 
