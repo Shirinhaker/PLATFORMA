@@ -53,7 +53,6 @@ ignore = [
 
   # --- VAQTINCHA: qoldiq. Har birini alohida PR bilan tuzatib,
   # --- shu ro'yxatdan o'chirib boring. Yangi kod bularni buzmasligi kerak.
-  "B007",    # 1  — ishlatilmagan sikl o'zgaruvchisi
   "RUF005",  # 1
   "RUF036",  # 1  — None union oxirida emas
   "RUF046",  # 4  — keraksiz int() konversiyasi
@@ -63,7 +62,6 @@ ignore = [
   "SIM105",  # 10 — contextlib.suppress ishlatish mumkin
   "SIM115",  # 2  — open() context manager'siz
   "SIM117",  # 2  — ichma-ich with
-  "SIM401",  # 2  — dict.get() ishlatish mumkin
   "UP031",   # 8  — eski % formatlash
   "UP042",   # 10 — str + Enum o'rniga StrEnum
 ]

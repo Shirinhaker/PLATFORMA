@@ -125,7 +125,7 @@ class MovesMixin(BatchesMixin, InventoryServiceBase):
                     )
                     session.add(production)
                     await session.flush()
-                    for ingredient, ingredient_catalog, qty in inputs:
+                    for ingredient, _catalog, qty in inputs:
                         total = await self._consume_fifo(
                             session,
                             business_account_id=business_account_id,
