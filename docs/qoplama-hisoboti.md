@@ -144,3 +144,28 @@ test bo'lmasa, buzilgani bilinmaydi.
 
 `stories` (31.2%) esa hajmi bo'yicha eng katta bo'shliq, lekin pulga
 tegmaydi — shuning uchun ikkinchi navbatda.
+
+---
+
+## Yangilanish — 2026-08-18: uchta xavfli bo'shliq yopildi
+
+Yuqorida sanalgan uchta pul bilan bog'liq bo'shliqqa test yozildi
+(7-bosqichdan, ya'ni mypy'dan **oldin**, chunki o'sha bosqichda
+aynan shu kodga tur qo'shiladi).
+
+| Modul | Edi | Bo'ldi |
+|---|---:|---:|
+| `education/management/payments.py` | 44% | **81%** |
+| `education/management/payroll.py` | 61% | **86%** |
+| `taxi/service_parts/drivers.py` | 45% | **58%** |
+| **Jami** | **49%** | **76%** |
+
+`taxi/drivers.py` 58% da qoldi, lekin `topup_driver` — pulga tegadigan
+yagona metod — **to'liq qoplandi**. Qolgan bo'shliq `save_driver` va
+`list_admin_drivers` da.
+
+Qo'shilgan testlar: **8 ta** (821 → 829).
+
+Ular haqiqiy xatoni ushlashi tekshirildi: `driver.balance += amount`
+ni `= amount` ga o'zgartirganda 3 ta test yiqildi, audit yozuvini
+olib tashlaganda esa 1 tasi.
