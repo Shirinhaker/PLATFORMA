@@ -132,7 +132,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
-| `auth` | `/api/v1/auth` | 2 300 | Telegram auth, sessiya, xavfsizlik, shared login |
+| `auth` | `/api/v1/auth` | 2 367 | Telegram auth, sessiya, xavfsizlik, shared login |
 | `accounts` | — | 128 | account modeli (router yo'q) |
 | `profiles` | `/api/v1` | 1 205 | foydalanuvchi/biznes profillari |
 | `account_settings` | `/api/v1/account-settings` | 266 | sozlamalar |
@@ -174,7 +174,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 
 | Modul | Qator | Nima qiladi |
 |---|---|---|
-| `core` | 319 | `config.py`, `errors.py` (ApiError), `logging.py`, `middleware.py` |
+| `core` | 325 | `config.py`, `errors.py` (ApiError), `logging.py`, `middleware.py` |
 | `db` | 116 | sessiya, `Base`, `all_models.py` |
 | `cache` | 81 | Redis client, rate limit |
 | `outbox` | 413 | outbox jadvali + fon worker |
