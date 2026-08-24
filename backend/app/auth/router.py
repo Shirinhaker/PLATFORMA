@@ -239,6 +239,34 @@ async def logout(
     return response
 
 
+def _parse_start_command(payload: dict[str, Any]) -> tuple[int, str] | None:
+    """`/start <token>` bo'lsa (chat_id, token) qaytaradi, aks holda `None`."""
+    message = payload.get("message")
+    if not isinstance(message, dict):
+        return None
+    chat = message.get("chat")
+    text = message.get("text")
+    if (
+        not isinstance(chat, dict)
+        or chat.get("type") != "private"
+        or not isinstance(chat.get("id"), int)
+        or not isinstance(text, str)
+        or not text.startswith("/start ")
+    ):
+        return None
+    start_token = text.removeprefix("/start ").strip()
+    if not start_token:
+        return None
+    return chat["id"], start_token
+
+
+async def _forward_to_legacy(request: Request, payload: dict[str, Any]) -> None:
+    forwarder = getattr(request.app.state, "legacy_webhook_forwarder", None)
+    if forwarder is None:
+        return
+    await forwarder.forward(payload)
+
+
 @router.post("/telegram/webhook")
 async def telegram_webhook(
     request: Request,
@@ -257,32 +285,29 @@ async def telegram_webhook(
         )
 
     payload: dict[str, Any] = await request.json()
-    message = payload.get("message")
-    if not isinstance(message, dict):
-        return {"ok": True}
-    chat = message.get("chat")
-    text = message.get("text")
-    if (
-        not isinstance(chat, dict)
-        or chat.get("type") != "private"
-        or not isinstance(chat.get("id"), int)
-        or not isinstance(text, str)
-        or not text.startswith("/start ")
-    ):
+    parsed = _parse_start_command(payload)
+    if parsed is None:
+        await _forward_to_legacy(request, payload)
         return {"ok": True}
 
-    start_token = text.removeprefix("/start ").strip()
-    if not start_token:
-        return {"ok": True}
+    chat_id, start_token = parsed
     await _enforce_rate_limit(
         request,
-        f"auth:telegram:webhook:chat:{chat['id']}",
+        f"auth:telegram:webhook:chat:{chat_id}",
         60,
         60,
     )
-    await request.app.state.auth_service.activate_deep_link(
-        start_token,
-        chat["id"],
-        datetime.now(UTC),
-    )
+    try:
+        await request.app.state.auth_service.activate_deep_link(
+            start_token,
+            chat_id,
+            datetime.now(UTC),
+        )
+    except ApiError as error:
+        # Token bizda yo'q — u eski tizimda ochilgan bo'lishi mumkin.
+        # Boshqa xatolar (masalan allaqachon faollashtirilgan) bizniki,
+        # ularni uzatmaymiz.
+        if error.code != "invalid_start_token":
+            raise
+        await _forward_to_legacy(request, payload)
     return {"ok": True}

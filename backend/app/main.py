@@ -2,6 +2,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -23,6 +24,7 @@ from app.advertisements.service import AdvertisementAuthoringService
 from app.ai_assistant.provider import OpenAIResponsesProvider
 from app.ai_assistant.router import router as ai_assistant_router
 from app.ai_assistant.service import AIAssistantService
+from app.auth.legacy_webhook import LegacyWebhookForwarder
 from app.auth.router import router as auth_router
 from app.auth.shared_login import SharedLoginAuthService
 from app.auth.shared_login_router import router as shared_login_router
@@ -49,7 +51,7 @@ from app.documents.router import router as documents_router
 from app.documents.service_parts import DocumentService
 from app.education.management import EducationManagementService
 from app.education.router import router as education_router
-from app.education.service import EducationEnrollmentService
+from app.education.service import EducationEnrollmentService, SessionFactory
 from app.education.statistics_service import EducationStatisticsService
 from app.expenses.router import router as expenses_router
 from app.expenses.service import ExpenseService
@@ -108,6 +110,30 @@ def _remove_legacy_login_start_route() -> None:
             and "POST" in (getattr(route, "methods", set()) or set())
         )
     ]
+
+
+def _build_legacy_forwarder(settings: Settings) -> LegacyWebhookForwarder | None:
+    """Eski monolit manzili berilgan bo'lsagina uzatuvchi quriladi.
+
+    Telegram bitta botga bitta webhook biriktiradi, shuning uchun bizga
+    tegishli bo'lmagan yangilanishlar eski tizimga uzatiladi.
+    """
+    if not settings.telegram_legacy_webhook_url:
+        return None
+    return LegacyWebhookForwarder(
+        settings.telegram_legacy_webhook_url,
+        settings.telegram_legacy_webhook_secret,
+        httpx.AsyncClient(timeout=10),
+    )
+
+
+def _attach_education_services(
+    app: FastAPI,
+    session_factory: SessionFactory,
+) -> None:
+    app.state.education_enrollment_service = EducationEnrollmentService(session_factory)
+    app.state.education_statistics_service = EducationStatisticsService(session_factory)
+    app.state.education_management_service = EducationManagementService(session_factory)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -259,20 +285,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.admin_moderation_service = AdminModerationService(database.session)
         app.state.admin_reports_service = AdminReportsService(database.session)
         app.state.queue_service = QueueService(database.session)
-        app.state.education_enrollment_service = EducationEnrollmentService(
-            database.session,
-        )
-        app.state.education_statistics_service = EducationStatisticsService(
-            database.session,
-        )
-        app.state.education_management_service = EducationManagementService(
-            database.session,
-        )
+        _attach_education_services(app, database.session)
         app.state.staff_service = StaffService(database.session, resolved)
         app.state.statistics_service = StatisticsService(database.session)
+        legacy_forwarder = _build_legacy_forwarder(resolved)
+        app.state.legacy_webhook_forwarder = legacy_forwarder
         try:
             yield
         finally:
+            if legacy_forwarder is not None:
+                await legacy_forwarder.aclose()
             await app.state.ai_assistant_service.close()
             await redis_client.stop()
             await database.stop()

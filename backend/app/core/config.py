@@ -35,6 +35,12 @@ class Settings(BaseSettings):
     telegram_bot_token: str = Field(default="")
     telegram_bot_username: str = Field(default="")
     telegram_webhook_secret: str = Field(default="")
+    # Bitta botga Telegram faqat bitta webhook manzilini biriktiradi.
+    # Eski v1656 monoliti hali tirik ekan, o'zimizga tegishli bo'lmagan
+    # yangilanishlarni o'shanga uzatib turamiz — shunda bitta bot bilan
+    # ikkala tizim ham ishlaydi. Bo'sh bo'lsa uzatish o'chiq.
+    telegram_legacy_webhook_url: str = Field(default="")
+    telegram_legacy_webhook_secret: str = Field(default="")
     otp_secret: str = Field(default="")
     csrf_secret: str = Field(default="")
     outbox_encryption_key: str = Field(default="")
