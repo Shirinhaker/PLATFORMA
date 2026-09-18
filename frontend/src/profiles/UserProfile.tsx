@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import type { NotificationRead, UserProfile as UserProfileData } from "../api/types";
+import { useCabinetProfile } from "./cabinet-profile-resource";
 import { CabinetDataView } from "./CabinetDataView";
 import { OwnerListings, type OwnerListingsApi } from "../listings/OwnerListings";
 import { SavedListings } from "../listings/SavedListings";
@@ -61,7 +62,12 @@ export function UserProfile({
   onOpenPublicProfile,
   onSwitched,
 }: UserProfileProps) {
-  const [profile, setProfile] = useState<UserProfileData | null>(null);
+  const { profile, setProfile, loadError } = useCabinetProfile(
+    api,
+    identity,
+    "user",
+    () => api.getUserProfile(),
+  );
   const [view, setView] = useState<CabinetView>("dashboard");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -77,19 +83,8 @@ export function UserProfile({
   }
 
   useEffect(() => {
-    let active = true;
-    api
-      .getUserProfile()
-      .then((value) => {
-        if (active) applyLoaded(value);
-      })
-      .catch((reason) => {
-        if (active) setError(message(reason));
-      });
-    return () => {
-      active = false;
-    };
-  }, [api]);
+    if (profile) setNotificationUnread(profile.dashboard_snapshot?.unread ?? 0);
+  }, [profile]);
 
   useEffect(() => {
     if (typeof api.getMessageUnreadCount !== "function") return;
@@ -181,7 +176,11 @@ export function UserProfile({
   if (!profile) {
     return (
       <main className="profile-shell">
-        {error ? <p role="alert">{error}</p> : "Profil yuklanmoqda…"}
+        {error || loadError ? (
+          <p role="alert">{error || message(loadError)}</p>
+        ) : (
+          "Profil yuklanmoqda…"
+        )}
       </main>
     );
   }
