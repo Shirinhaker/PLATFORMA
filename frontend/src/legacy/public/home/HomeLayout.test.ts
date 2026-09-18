@@ -10,7 +10,7 @@ describe("v1656 mobile Home layout contract", () => {
       ".app-shell.home-active { height: 100dvh; max-height: 100dvh; overflow: hidden; }",
     );
     expect(normalized).toContain(
-      "grid-template-rows: 88px minmax(0, 1fr) 122px 4px 110px",
+      "grid-template-rows: auto minmax(0, 1fr) auto auto auto",
     );
     expect(normalized).toContain(
       ".screen[data-screen=\"home\"] > #followedProfileStrip { height: 88px",
@@ -23,6 +23,21 @@ describe("v1656 mobile Home layout contract", () => {
     );
     expect(normalized).toContain(".pin .dot.has-photo");
     expect(normalized).toContain(".pin .pin-fallback");
+  });
+
+  it("keeps discovery in the flexible row when guest follows or advertisements are absent", () => {
+    const css = readFileSync("src/legacy/public/legacy-public.css", "utf8");
+    const normalized = css.replace(/\s+/g, " ");
+    for (const [selector, row] of [
+      ["#followedProfileStrip", 1],
+      [".home-discovery", 2],
+      ["#adBox", 3],
+      ["#adDots", 4],
+      ["#districtOffersMount", 5],
+    ]) {
+      expect(normalized).toContain(`.screen[data-screen="home"] > ${selector} { grid-row: ${row}; }`);
+    }
+    expect(normalized).toContain("grid-template-rows: auto minmax(0, 1fr) auto auto auto");
   });
 
   it("keeps the exact v1656 dark palette available to the Home shell", () => {
