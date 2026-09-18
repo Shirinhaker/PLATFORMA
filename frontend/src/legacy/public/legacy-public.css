@@ -1614,7 +1614,7 @@
 
 @media (max-width: 620px) {
   .app-shell.home-active { height: 100dvh; max-height: 100dvh; overflow: hidden; }
-  .app-shell.home-active .app-shell__content { min-height: 0; overflow: hidden; padding-bottom: 0; }
+  .app-shell.home-active .app-shell__content { min-height: 0; overflow-x: hidden; overflow-y: auto; padding-bottom: env(safe-area-inset-bottom, 0px); }
   .topbar { height: 42px; overflow: hidden; padding: 4px 6px; }
   .tb-home { min-width: 0; height: 34px; gap: 3px; overflow: hidden; }
   .web-brand { max-width: 56px; flex: 0 0 auto; margin-right: auto; overflow: hidden; font-size: 17px; text-overflow: ellipsis; }
@@ -1623,7 +1623,7 @@
   .tb-home > .icon-btn { width: 30px; min-width: 30px; height: 30px; border-radius: 9px; }
   .tb-home > .icon-btn svg { width: 17px; height: 17px; }
   #taxiCabBtn { display: grid; font-size: 15px !important; }
-  .screen[data-screen="home"] { display: grid; height: 100%; min-height: 0; padding: 4px 8px; grid-template-rows: auto minmax(0, 1fr) auto auto auto; gap: 4px; align-content: stretch; }
+  .screen[data-screen="home"] { display: grid; height: auto; min-height: 0; padding: 4px 8px; grid-template-rows: repeat(5, auto); gap: 4px; align-content: start; }
   /* Bo‘sh obuna yoki reklama qatori xaritani boshqa qatorga surmasin. */
   .screen[data-screen="home"] > #followedProfileStrip { grid-row: 1; }
   .screen[data-screen="home"] > .home-discovery { grid-row: 2; }
@@ -1635,7 +1635,7 @@
   .screen[data-screen="home"] > #followedProfileStrip .story-card { width: 66px; flex-basis: 66px; }
   .screen[data-screen="home"] > #followedProfileStrip .story-thumb { width: 62px; height: 62px; border-radius: 16px; }
   .screen[data-screen="home"] > #followedProfileStrip .story-name { margin-top: 3px; font-size: 9px; }
-  .screen[data-screen="home"] .home-discovery { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto minmax(0, 1fr); gap: 4px; }
+  .screen[data-screen="home"] .home-discovery { display: grid; min-width: 0; min-height: 0; grid-template-rows: auto clamp(160px, 30vh, 240px); grid-template-rows: auto clamp(160px, 30dvh, 240px); gap: 4px; }
   .screen[data-screen="home"] .home-search-card { padding: 6px 8px; border-radius: 12px; }
   .screen[data-screen="home"] .home-search-card h1 { font-size: 15px; line-height: 1.08; letter-spacing: -.02em; }
   .screen[data-screen="home"] .home-search-row { height: 36px; margin-top: 5px; grid-template-columns: minmax(0, 1fr) 94px 64px; grid-template-areas: "query catalog submit"; column-gap: 4px; row-gap: 0; }
