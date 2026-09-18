@@ -15,6 +15,7 @@ import {
   type QueueBookingTarget,
 } from "../queues/QueueBooking";
 import type { MessagePeer } from "../messages/Messages";
+import { useOrderCustomerProfile } from "./use-order-customer-profile";
 import { AccountContent } from "./AccountContent";
 import { AppFrame } from "./AppFrame";
 import type { AppApi } from "./app-api";
@@ -35,7 +36,7 @@ export function App({ api }: { api: AppApi }) {
   const [openedChat, setOpenedChat] = useState<MessagePeer | null>(null);
   const [carts, setCarts] = useState<CartState>({});
   const [cartFilter, setCartFilter] = useState<string | null>(null);
-  const [orderCustomer, setOrderCustomer] = useState({ phone: "", address: "" });
+  const orderCustomer = useOrderCustomerProfile(api, session);
   const [queueBooking, setQueueBooking] = useState<QueueBookingTarget | null>(null);
   const [courseEnrollment, setCourseEnrollment] =
     useState<CourseEnrollmentTarget | null>(null);
@@ -218,43 +219,6 @@ export function App({ api }: { api: AppApi }) {
       active = false;
     };
   }, [api, attempt]);
-
-  useEffect(() => {
-    let active = true;
-    if (session.status === "user" && typeof api.getUserProfile === "function") {
-      api
-        .getUserProfile()
-        .then((profile) => {
-          if (!active) return;
-          setOrderCustomer({
-            phone: profile.phone || "",
-            address: [profile.region, profile.district, profile.mahalla]
-              .filter(Boolean)
-              .join(", "),
-          });
-        })
-        .catch(() => undefined);
-    } else if (
-      session.status === "business" &&
-      typeof api.getBusinessProfile === "function"
-    ) {
-      api
-        .getBusinessProfile()
-        .then((profile) => {
-          if (active)
-            setOrderCustomer({
-              phone: profile.phone || "",
-              address: profile.address || "",
-            });
-        })
-        .catch(() => undefined);
-    } else if (session.status === "guest") {
-      setOrderCustomer({ phone: "", address: "" });
-    }
-    return () => {
-      active = false;
-    };
-  }, [api, session.status]);
 
   useEffect(() => {
     if (!queueMessage.text) return;

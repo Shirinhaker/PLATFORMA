@@ -217,11 +217,11 @@ Domen papkalari va hajmi:
 
 | Papka | Qator | Papka | Qator |
 |---|---|---|---|
-| `profiles` | 33 685⚠️ | `orders` | 4 963 |
+| `profiles` | 33 860⚠️ | `orders` | 4 963 |
 | `legacy/public` | 9 093⚠️ | `dining` | 2 323 |
 | `api` | 6 467 | `listings` | 2 787 |
 | `admin` | 3 848 | `taxi` | 2 703 |
-| `app` | 3 131 | `queues` | 1 802 |
+| `app` | 3 290 | `queues` | 1 802 |
 | `auth` | 1 623 | `education` | 4 073 |
 | `documents` | 2 080 | `messages` | 1 451 |
 | qolganlari | har biri < 1 000 | | |

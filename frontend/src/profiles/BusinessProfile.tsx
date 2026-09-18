@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
-import type {
-  BusinessProfile as BusinessProfileData,
-  NotificationRead,
-  SessionIdentity,
-} from "../api/types";
+import type { NotificationRead, SessionIdentity } from "../api/types";
+import { useCabinetProfile } from "./cabinet-profile-resource";
 import { BusinessOnlineScreen } from "./BusinessOnlineScreen";
 import { BusinessProfileEditor } from "./BusinessProfileEditor";
 import {
@@ -100,8 +97,12 @@ export function BusinessProfile({
   onOpenPublicProfile,
   onSwitched,
 }: Props) {
-  const [profile, setProfile] = useState<BusinessProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { profile, setProfile, loading, loadError } = useCabinetProfile(
+    api,
+    identity,
+    "business",
+    () => api.getBusinessProfile(),
+  );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [screen, setScreen] = useState<Screen>("cabinet");
@@ -120,26 +121,6 @@ export function BusinessProfile({
   const [documentsInitialView, setDocumentsInitialView] = useState<
     "profile" | "center"
   >("center");
-
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    setError("");
-    api
-      .getBusinessProfile()
-      .then((value) => {
-        if (mounted) setProfile(value);
-      })
-      .catch((reason) => {
-        if (mounted) setError(message(reason));
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [api]);
 
   useEffect(() => {
     if (
@@ -213,7 +194,7 @@ export function BusinessProfile({
     return (
       <main className="session-panel">
         <p className="form-error" role="alert">
-          {error || "Biznes profil topilmadi."}
+          {error || (loadError ? message(loadError) : "Biznes profil topilmadi.")}
         </p>
         <button type="button" onClick={() => window.location.reload()}>
           Qayta urinish
