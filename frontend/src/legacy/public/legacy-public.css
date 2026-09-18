@@ -1623,7 +1623,13 @@
   .tb-home > .icon-btn { width: 30px; min-width: 30px; height: 30px; border-radius: 9px; }
   .tb-home > .icon-btn svg { width: 17px; height: 17px; }
   #taxiCabBtn { display: grid; font-size: 15px !important; }
-  .screen[data-screen="home"] { display: grid; height: 100%; min-height: 0; padding: 4px 8px; grid-template-rows: 88px minmax(0, 1fr) 122px 4px 110px; gap: 4px; align-content: stretch; }
+  .screen[data-screen="home"] { display: grid; height: 100%; min-height: 0; padding: 4px 8px; grid-template-rows: auto minmax(0, 1fr) auto auto auto; gap: 4px; align-content: stretch; }
+  /* Bo‘sh obuna yoki reklama qatori xaritani boshqa qatorga surmasin. */
+  .screen[data-screen="home"] > #followedProfileStrip { grid-row: 1; }
+  .screen[data-screen="home"] > .home-discovery { grid-row: 2; }
+  .screen[data-screen="home"] > #adBox { grid-row: 3; }
+  .screen[data-screen="home"] > #adDots { grid-row: 4; }
+  .screen[data-screen="home"] > #districtOffersMount { grid-row: 5; }
   .screen[data-screen="home"] > #followedProfileStrip { height: 88px; min-width: 0; margin: 0; overflow: hidden; }
   .screen[data-screen="home"] > #followedProfileStrip .story-rail { height: 88px; gap: 7px; padding: 0 2px 2px; }
   .screen[data-screen="home"] > #followedProfileStrip .story-card { width: 66px; flex-basis: 66px; }
