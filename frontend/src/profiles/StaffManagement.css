@@ -50,7 +50,7 @@
 .staff-v1656__fired {
   border: 1px solid #dce8e2;
   border-radius: 18px;
-  background: #fff;
+  background: var(--card, #fff);
   box-shadow: 0 10px 30px rgb(28 66 48 / 6%);
 }
 
@@ -105,7 +105,7 @@
   border: 1px solid #cad9d2;
   border-radius: 12px;
   padding: 10px 12px;
-  background: #fff;
+  background: var(--card, #fff);
   color: inherit;
   font: inherit;
 }
@@ -127,7 +127,7 @@
   padding: 13px;
   border: 1px solid #dce8e2;
   border-radius: 16px;
-  background: #fff;
+  background: var(--card, #fff);
   color: inherit;
   text-align: left;
 }

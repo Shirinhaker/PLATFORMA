@@ -18,7 +18,7 @@
 .debt-v1656__heading > button {
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: var(--primary, #0e8c84);
   font-weight: 700;
   cursor: pointer;
 }
@@ -28,7 +28,7 @@
 }
 .debt-v1656__heading p {
   margin: 3px 0 0;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .debt-v1656__summary {
   padding: 20px;
@@ -63,7 +63,7 @@
   border: 1px solid rgba(255, 255, 255, 0.65);
   border-radius: 12px;
   padding: 0 18px;
-  background: #fff;
+  background: var(--card, #fff);
   color: #1d4ed8;
   font-weight: 800;
   cursor: pointer;
@@ -82,7 +82,7 @@
   padding: 11px;
   border: 1px solid #e2e8f0;
   border-radius: 15px;
-  background: #fff;
+  background: var(--card, #fff);
   text-align: left;
   cursor: pointer;
 }
@@ -97,13 +97,13 @@
 }
 .debt-v1656__list small {
   margin-top: 3px;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .debt-v1656__list strong {
   color: #dc2626;
 }
 .debt-v1656__list em {
-  color: #64748b;
+  color: var(--soft, #5c6e66);
   font-style: normal;
   font-weight: 700;
 }
@@ -114,7 +114,7 @@
   height: 48px;
   border-radius: 14px;
   background: #dbeafe;
-  color: #2563eb;
+  color: var(--primary, #0e8c84);
   font-weight: 900;
   font-size: 18px;
 }
@@ -124,7 +124,7 @@
   margin-top: 10px;
   border: 0;
   border-radius: 14px;
-  background: #2563eb;
+  background: var(--primary, #0e8c84);
   color: #fff;
   font-weight: 800;
   cursor: pointer;
@@ -132,11 +132,11 @@
 .debt-v1656__empty {
   padding: 26px;
   text-align: center;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .debt-v1656__empty h3 {
   margin: 0 0 4px;
-  color: #172033;
+  color: var(--ink, #11201b);
 }
 .debt-v1656__error {
   padding: 10px 12px;
@@ -156,7 +156,7 @@
   font-size: 18px;
 }
 .debt-v1656__section-title span {
-  color: #2563eb;
+  color: var(--primary, #0e8c84);
   font-weight: 700;
 }
 .debt-v1656__transactions {
@@ -171,12 +171,12 @@
   padding: 13px;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
-  background: #fff;
+  background: var(--card, #fff);
 }
 .debt-v1656__transactions small {
   display: block;
   margin-top: 4px;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .debt-v1656__transactions strong.debit {
   color: #dc2626;
@@ -197,7 +197,7 @@
   width: min(520px, 100%);
   padding: 18px;
   border-radius: 22px;
-  background: #fff;
+  background: var(--card, #fff);
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
 }
 .debt-v1656__modal h2 {
@@ -220,8 +220,8 @@
   border: 1px solid #cbd5e1;
   border-radius: 12px;
   padding: 0 11px;
-  background: #fff;
-  color: #172033;
+  background: var(--card, #fff);
+  color: var(--ink, #11201b);
 }
 .debt-v1656__modal-actions {
   display: flex;
@@ -234,13 +234,13 @@
   border: 1px solid #cbd5e1;
   border-radius: 12px;
   padding: 0 16px;
-  background: #fff;
+  background: var(--card, #fff);
   font-weight: 800;
   cursor: pointer;
 }
 .debt-v1656__modal-actions button:last-child {
-  border-color: #2563eb;
-  background: #2563eb;
+  border-color: var(--primary, #0e8c84);
+  background: var(--primary, #0e8c84);
   color: #fff;
 }
 @media (max-width: 560px) {
@@ -269,28 +269,26 @@
     border-radius: 22px 22px 0 0;
   }
 }
-@media (prefers-color-scheme: dark) {
-  .debt-v1656 {
-    color: #e5e7eb;
-  }
-  .debt-v1656__heading p,
-  .debt-v1656__list small,
-  .debt-v1656__empty,
-  .debt-v1656__transactions small {
-    color: #94a3b8;
-  }
-  .debt-v1656__list > button,
-  .debt-v1656__transactions article,
-  .debt-v1656__modal {
-    border-color: #334155;
-    background: #111827;
-    color: #e5e7eb;
-  }
-  .debt-v1656__modal input,
-  .debt-v1656__modal select,
-  .debt-v1656__modal-actions button {
-    border-color: #475569;
-    background: #0f172a;
-    color: #e5e7eb;
-  }
+[data-theme="dark"] .debt-v1656 {
+  color: var(--ink, #11201b);
+}
+[data-theme="dark"] .debt-v1656__heading p,
+[data-theme="dark"] .debt-v1656__list small,
+[data-theme="dark"] .debt-v1656__empty,
+[data-theme="dark"] .debt-v1656__transactions small {
+  color: var(--soft, #5c6e66);
+}
+[data-theme="dark"] .debt-v1656__list > button,
+[data-theme="dark"] .debt-v1656__transactions article,
+[data-theme="dark"] .debt-v1656__modal {
+  border-color: var(--line, #e4ebe7);
+  background: var(--card, #fff);
+  color: var(--ink, #11201b);
+}
+[data-theme="dark"] .debt-v1656__modal input,
+[data-theme="dark"] .debt-v1656__modal select,
+[data-theme="dark"] .debt-v1656__modal-actions button {
+  border-color: #475569;
+  background: #0f172a;
+  color: var(--ink, #11201b);
 }

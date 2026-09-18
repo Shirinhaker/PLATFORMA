@@ -23,8 +23,8 @@
   border: 1px solid #d9e2ea;
   border-radius: 11px;
   padding: 0 12px;
-  background: #fff;
-  color: #087f72;
+  background: var(--card, #fff);
+  color: var(--primary, #0e8c84);
   font-weight: 800;
 }
 .warehouse-v1656__heading > button:first-child {
@@ -41,7 +41,7 @@
 }
 .warehouse-v1656__heading p {
   margin: 3px 0 0;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .warehouse-v1656__error {
   position: relative;
@@ -59,7 +59,7 @@
   gap: 5px;
   padding: 4px;
   border-radius: 14px;
-  background: #e7efee;
+  background: var(--primary-tint, #e2f3f1);
 }
 .warehouse-v1656__tabs button {
   height: 42px;
@@ -70,8 +70,8 @@
   color: #52615f;
 }
 .warehouse-v1656__tabs button.on {
-  background: #fff;
-  color: #087f72;
+  background: var(--card, #fff);
+  color: var(--primary, #0e8c84);
   box-shadow: 0 2px 9px rgba(20, 50, 46, 0.12);
 }
 .warehouse-v1656__tools {
@@ -85,14 +85,14 @@
   border: 1px solid #b8d7d3;
   border-radius: 11px;
   padding: 0 13px;
-  background: #effaf8;
-  color: #087f72;
+  background: var(--primary-tint, #e2f3f1);
+  color: var(--primary, #0e8c84);
   font-weight: 800;
 }
 .warehouse-v1656__empty {
   padding: 30px 16px;
   text-align: center;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .warehouse-v1656__groups {
   display: grid;
@@ -113,7 +113,7 @@
   padding: 14px;
   border: 1px solid #dfe7e6;
   border-radius: 18px;
-  background: #fff;
+  background: var(--card, #fff);
   box-shadow: 0 8px 22px rgba(20, 50, 46, 0.06);
 }
 .warehouse-v1656__card.low {
@@ -149,7 +149,7 @@
   white-space: nowrap;
 }
 .warehouse-v1656__product small {
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .warehouse-v1656__stock {
   display: flex;
@@ -160,12 +160,12 @@
   background: #f3f8f7;
 }
 .warehouse-v1656__stock span {
-  color: #64748b;
+  color: var(--soft, #5c6e66);
   font-size: 12px;
 }
 .warehouse-v1656__stock strong {
   font-size: 18px;
-  color: #087f72;
+  color: var(--primary, #0e8c84);
 }
 .warehouse-v1656__warning {
   margin: 0;
@@ -185,7 +185,7 @@
   font-size: 12px;
 }
 .warehouse-v1656__card dt {
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .warehouse-v1656__card dd {
   margin: 0;
@@ -200,15 +200,15 @@
   min-height: 36px;
   border: 1px solid #cbd9d7;
   border-radius: 10px;
-  background: #fff;
-  color: #087f72;
+  background: var(--card, #fff);
+  color: var(--primary, #0e8c84);
   font-size: 12px;
   font-weight: 800;
 }
 .warehouse-v1656__actions button:first-child {
-  background: #087f72;
+  background: var(--primary, #0e8c84);
   color: #fff;
-  border-color: #087f72;
+  border-color: var(--primary, #0e8c84);
 }
 .warehouse-v1656__modal-back {
   position: fixed;
@@ -227,7 +227,7 @@
   overflow: auto;
   padding: 18px;
   border-radius: 22px;
-  background: #fff;
+  background: var(--card, #fff);
   box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
 }
 .warehouse-v1656__modal--wide {
@@ -251,8 +251,8 @@
   border: 1px solid #cbd5d3;
   border-radius: 11px;
   padding: 0 10px;
-  background: #fff;
-  color: #172033;
+  background: var(--card, #fff);
+  color: var(--ink, #11201b);
 }
 .warehouse-v1656__cost-row {
   display: grid;
@@ -270,12 +270,12 @@
   border: 1px solid #cbd5d3;
   border-radius: 11px;
   padding: 0 15px;
-  background: #fff;
+  background: var(--card, #fff);
   font-weight: 800;
 }
 .warehouse-v1656__modal-actions button:last-child {
-  border-color: #087f72;
-  background: #087f72;
+  border-color: var(--primary, #0e8c84);
+  background: var(--primary, #0e8c84);
   color: #fff;
 }
 .warehouse-v1656__recipe {
@@ -287,7 +287,7 @@
 }
 .warehouse-v1656__recipe p {
   margin: 0;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
   font-size: 13px;
 }
 .warehouse-v1656__recipe-title {
@@ -299,7 +299,7 @@
 .warehouse-v1656__recipe-title button {
   border: 0;
   background: transparent;
-  color: #087f72;
+  color: var(--primary, #0e8c84);
   font-weight: 800;
 }
 .warehouse-v1656__ingredient {
@@ -344,11 +344,11 @@
 }
 .warehouse-v1656__history span,
 .warehouse-v1656__history small {
-  color: #64748b;
+  color: var(--soft, #5c6e66);
   font-size: 12px;
 }
 .warehouse-v1656__history .plus {
-  color: #087f72;
+  color: var(--primary, #0e8c84);
 }
 .warehouse-v1656__history .minus {
   color: #c2410c;
@@ -373,11 +373,11 @@
   gap: 8px;
 }
 .warehouse-v1656__production-head span {
-  color: #087f72;
+  color: var(--primary, #0e8c84);
   font-weight: 800;
 }
 .warehouse-v1656__production small {
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .warehouse-v1656__production p {
   margin: 6px 0;
@@ -422,35 +422,33 @@
     flex-wrap: wrap;
   }
 }
-@media (prefers-color-scheme: dark) {
-  .warehouse-v1656 {
-    color: #e5e7eb;
-  }
-  .warehouse-v1656__heading p,
-  .warehouse-v1656__product small,
-  .warehouse-v1656__card dt,
-  .warehouse-v1656__empty {
-    color: #94a3b8;
-  }
-  .warehouse-v1656__card,
-  .warehouse-v1656__modal,
-  .warehouse-v1656__heading > button,
-  .warehouse-v1656__actions button,
-  .warehouse-v1656__modal input,
-  .warehouse-v1656__modal select,
-  .warehouse-v1656__modal-actions button {
-    border-color: #334155;
-    background: #111827;
-    color: #e5e7eb;
-  }
-  .warehouse-v1656__stock,
-  .warehouse-v1656__recipe {
-    background: #162320;
-  }
-  .warehouse-v1656__tabs {
-    background: #172321;
-  }
-  .warehouse-v1656__tabs button.on {
-    background: #0f172a;
-  }
+[data-theme="dark"] .warehouse-v1656 {
+  color: var(--ink, #11201b);
+}
+[data-theme="dark"] .warehouse-v1656__heading p,
+[data-theme="dark"] .warehouse-v1656__product small,
+[data-theme="dark"] .warehouse-v1656__card dt,
+[data-theme="dark"] .warehouse-v1656__empty {
+  color: var(--soft, #5c6e66);
+}
+[data-theme="dark"] .warehouse-v1656__card,
+[data-theme="dark"] .warehouse-v1656__modal,
+[data-theme="dark"] .warehouse-v1656__heading > button,
+[data-theme="dark"] .warehouse-v1656__actions button,
+[data-theme="dark"] .warehouse-v1656__modal input,
+[data-theme="dark"] .warehouse-v1656__modal select,
+[data-theme="dark"] .warehouse-v1656__modal-actions button {
+  border-color: var(--line, #e4ebe7);
+  background: var(--card, #fff);
+  color: var(--ink, #11201b);
+}
+[data-theme="dark"] .warehouse-v1656__stock,
+[data-theme="dark"] .warehouse-v1656__recipe {
+  background: #162320;
+}
+[data-theme="dark"] .warehouse-v1656__tabs {
+  background: #172321;
+}
+[data-theme="dark"] .warehouse-v1656__tabs button.on {
+  background: #0f172a;
 }

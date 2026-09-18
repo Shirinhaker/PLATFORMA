@@ -1,0 +1,153 @@
+/* Kabinet ichidagi umumiy forma va tizim bo'limlari: monolit input/btn/panel. */
+.account-cabinet
+  :is(input, select, textarea):not(
+    [type="checkbox"],
+    [type="radio"],
+    [type="range"],
+    [type="file"],
+    [type="hidden"]
+  ) {
+  min-width: 0;
+  max-width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--card);
+}
+.account-cabinet :is(input, select, textarea):focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+.account-cabinet textarea {
+  resize: vertical;
+}
+.account-cabinet :is(input[type="checkbox"], input[type="radio"], input[type="range"]) {
+  accent-color: var(--primary);
+}
+.account-cabinet
+  :is(
+    .business-profile-form,
+    .user-profile-form-v1656,
+    .business-online__form,
+    .specialist-v1656__form,
+    .documents-v1656__form,
+    .staff-v1656__fields
+  )
+  label {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Tizimlashtirishda qolgan eski ko'k/kulrang palette o'rniga Koprik tokenlari. */
+.account-cabinet
+  :is(
+    .cash-v1656__summary,
+    .cash-v1656__form-card,
+    .cash-v1656__receipt,
+    .expenses-v1656__summary,
+    .expenses-v1656__list > article,
+    .debt-v1656__summary,
+    .debt-v1656__transactions > article,
+    .statistics-v1656__panel,
+    .statistics-v1656__financial > div,
+    .education-statistics-v1656__intro,
+    .education-statistics-v1656__metric,
+    .education-statistics-v1656__navigation,
+    .education-statistics-v1656__groups > article,
+    .education-management-v1656__intro,
+    .education-management-v1656__day,
+    .education-management-v1656__cards > article,
+    .education-management-v1656__totals,
+    .education-management-v1656__toolbar,
+    .staff-v1656__panel,
+    .warehouse-v1656__card,
+    .documents-v1656__menu button,
+    .account-settings-v1656__rows > button,
+    .account-settings-v1656__login-card,
+    .account-settings-v1656__faq
+  ) {
+  min-width: 0;
+  border-color: var(--line);
+  border-radius: 18px;
+  color: var(--ink);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.account-cabinet
+  :is(
+    .cash-v1656__catalog,
+    .cash-v1656__draft-lines,
+    .staff-v1656__schedule,
+    .staff-v1656__attendance-row,
+    .warehouse-v1656__cards,
+    .documents-v1656__menu,
+    .education-management-v1656__filters,
+    .education-management-v1656__actions
+  ) {
+  min-width: 0;
+}
+
+.account-cabinet
+  :is(
+    .staff-v1656__schedule,
+    .staff-v1656__attendance-row,
+    .cash-v1656__draft-lines,
+    .warehouse-v1656__form
+  )
+  :is(label, input, select) {
+  min-width: 0;
+}
+
+.account-cabinet .warehouse-v1656__cards {
+  grid-template-columns: repeat(auto-fill, minmax(min(245px, 100%), 1fr));
+}
+
+/* 720-1079px planshet konteyneri 600px: desktopning qattiq ustunlari sig'maydi. */
+@media (max-width: 1079px) {
+  .account-cabinet .cash-v1656__draft-lines article {
+    grid-template-columns: minmax(0, 1fr) minmax(100px, 0.45fr);
+  }
+  .account-cabinet .cash-v1656__catalog {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .account-cabinet .staff-v1656__attendance-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .account-cabinet .staff-v1656__attendance-row > div:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 560px) {
+  .account-cabinet .staff-v1656__schedule > div {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .account-cabinet .staff-v1656__schedule > div > :first-child {
+    grid-column: 1 / -1;
+  }
+  .account-cabinet .documents-v1656__menu {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .account-cabinet
+    :is(
+      .education-management-v1656__filters.two,
+      .education-management-v1656__actions.two
+    ) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .account-cabinet :is(.cash-v1656__days, .warehouse-v1656__tools) {
+    flex-wrap: wrap;
+  }
+  .account-cabinet .cash-v1656__days select {
+    min-width: 0;
+    flex: 1;
+  }
+  /* iOS maydon fokusida kutilmagan zoom bermasligi uchun. */
+  .account-cabinet :is(input, select, textarea) {
+    font-size: 16px;
+  }
+}

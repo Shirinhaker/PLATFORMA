@@ -19,7 +19,7 @@
 .education-management-v1656__heading > button {
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: var(--primary, #0e8c84);
   font-weight: 750;
   cursor: pointer;
 }
@@ -30,7 +30,7 @@
 .education-management-v1656__heading p,
 .education-management-v1656__intro p {
   margin: 3px 0 0;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .education-management-v1656__intro,
 .education-management-v1656__day,
@@ -40,7 +40,7 @@
   padding: 13px;
   border: 1px solid #e2e8f0;
   border-radius: 15px;
-  background: #fff;
+  background: var(--card, #fff);
 }
 .education-management-v1656__intro {
   margin-bottom: 10px;
@@ -63,7 +63,7 @@
   padding: 0 11px;
   border: 1px solid #cbd5e1;
   border-radius: 12px;
-  background: #fff;
+  background: var(--card, #fff);
   color: inherit;
 }
 .education-management-v1656__actions {
@@ -78,7 +78,7 @@
   height: 42px;
   border: 1px solid #cbd5e1;
   border-radius: 11px;
-  background: #fff;
+  background: var(--card, #fff);
   font-weight: 750;
   cursor: pointer;
 }
@@ -109,7 +109,7 @@
 .education-management-v1656__toolbar small,
 .education-management-v1656__history small {
   display: block;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .education-management-v1656__lesson {
   display: flex;
@@ -118,7 +118,7 @@
   padding: 11px 12px;
   border: 1px solid #e2e8f0;
   border-radius: 13px;
-  background: #fff;
+  background: var(--card, #fff);
 }
 .education-management-v1656__lesson > strong {
   min-width: 68px;
@@ -136,7 +136,7 @@
 }
 .education-management-v1656__muted,
 .education-management-v1656__summary-line {
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .education-management-v1656__summary-line {
   margin: 10px 2px;
@@ -145,7 +145,7 @@
 .education-management-v1656__empty {
   padding: 28px 16px;
   text-align: center;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .education-management-v1656__empty h3 {
   margin: 0;
@@ -179,13 +179,13 @@
   padding: 5px 8px;
   border-radius: 999px;
   background: #eff6ff;
-  color: #2563eb;
+  color: var(--primary, #0e8c84);
   font-size: 12px;
   font-style: normal;
 }
 .education-management-v1656__cards > article > p {
   margin: 8px 0 0;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
   font-size: 13px;
 }
 .education-management-v1656__attendance-buttons {
@@ -198,7 +198,7 @@
   height: 38px;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
-  background: #fff;
+  background: var(--card, #fff);
   font-weight: 700;
   cursor: pointer;
 }
@@ -214,8 +214,8 @@
   background: #d99a00;
 }
 .education-management-v1656__attendance-buttons button.excused {
-  border-color: #2563eb;
-  background: #2563eb;
+  border-color: var(--primary, #0e8c84);
+  background: var(--primary, #0e8c84);
 }
 .education-management-v1656__attendance-buttons button.absent {
   border-color: #dc2626;
@@ -247,7 +247,7 @@
   padding: 0 12px;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
-  background: #fff;
+  background: var(--card, #fff);
   color: #475569;
   font-weight: 750;
   white-space: nowrap;
@@ -269,13 +269,13 @@
 }
 .education-management-v1656__totals span {
   min-width: 0;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
   font-size: 12px;
 }
 .education-management-v1656__totals b {
   display: block;
   margin-top: 3px;
-  color: #172033;
+  color: var(--ink, #11201b);
   overflow-wrap: anywhere;
 }
 .education-management-v1656 .positive {
@@ -314,7 +314,7 @@
 }
 .education-management-v1656__details p {
   line-height: 1.7;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .education-management-v1656__details em {
   font-style: normal;
@@ -326,7 +326,7 @@
   color: #c27a00;
 }
 .education-management-v1656__details em.upcoming {
-  color: #2563eb;
+  color: var(--primary, #0e8c84);
 }
 .education-management-v1656__details em.paid {
   color: #16a34a;
@@ -348,7 +348,7 @@
   padding: 10px 12px;
   border: 1px solid #e2e8f0;
   border-radius: 13px;
-  background: #fff;
+  background: var(--card, #fff);
 }
 .education-management-v1656__history article.voided {
   opacity: 0.65;
@@ -361,7 +361,7 @@
   padding: 0 9px;
   border: 1px solid #fecaca;
   border-radius: 9px;
-  background: #fff;
+  background: var(--card, #fff);
   color: #dc2626;
   cursor: pointer;
 }
@@ -396,7 +396,7 @@
   padding: 12px;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
-  background: #fff;
+  background: var(--card, #fff);
   color: inherit;
   text-align: left;
   cursor: pointer;
@@ -419,7 +419,7 @@
 .education-management-v1656__teacher em {
   display: block;
   margin-top: 7px;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
   font-size: 12px;
   font-style: normal;
 }
@@ -448,7 +448,7 @@
   box-sizing: border-box;
   padding: 18px;
   border-radius: 22px;
-  background: #fff;
+  background: var(--card, #fff);
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
 }
 .education-management-v1656__modal h2,
@@ -456,7 +456,7 @@
   margin: 0;
 }
 .education-management-v1656__modal p {
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .education-management-v1656__modal label {
   display: grid;
@@ -472,8 +472,8 @@
   box-sizing: border-box;
   border: 1px solid #cbd5e1;
   border-radius: 11px;
-  background: #fff;
-  color: #172033;
+  background: var(--card, #fff);
+  color: var(--ink, #11201b);
 }
 .education-management-v1656__modal input,
 .education-management-v1656__modal select {
@@ -497,7 +497,7 @@
   padding: 0 14px;
   border: 1px solid #cbd5e1;
   border-radius: 11px;
-  background: #fff;
+  background: var(--card, #fff);
   font-weight: 800;
   cursor: pointer;
 }
@@ -560,60 +560,56 @@
     border-radius: 22px 22px 0 0;
   }
 }
-@media (prefers-color-scheme: dark) {
-  .education-management-v1656 {
-    color: #e5e7eb;
-  }
-  .education-management-v1656__heading p,
-  .education-management-v1656__intro p,
-  .education-management-v1656__day small,
-  .education-management-v1656__lesson small,
-  .education-management-v1656__cards small,
-  .education-management-v1656__muted,
-  .education-management-v1656__summary-line,
-  .education-management-v1656__details p,
-  .education-management-v1656__history small,
-  .education-management-v1656__teacher em,
-  .education-management-v1656__modal p {
-    color: #94a3b8;
-  }
-  .education-management-v1656__intro,
-  .education-management-v1656__day,
-  .education-management-v1656__cards > article,
-  .education-management-v1656__totals,
-  .education-management-v1656__toolbar,
-  .education-management-v1656__lesson,
-  .education-management-v1656__filters input,
-  .education-management-v1656__filters select,
-  .education-management-v1656__actions button,
-  .education-management-v1656__tabs button,
-  .education-management-v1656__history article,
-  .education-management-v1656__teacher,
-  .education-management-v1656__month,
-  .education-management-v1656__search,
-  .education-management-v1656__modal,
-  .education-management-v1656__modal input,
-  .education-management-v1656__modal select,
-  .education-management-v1656__modal textarea,
-  .education-management-v1656__modal-actions button {
-    border-color: #334155;
-    background: #111827;
-    color: #e5e7eb;
-  }
-  .education-management-v1656__totals b {
-    color: #e5e7eb;
-  }
-  .education-management-v1656__details {
-    border-color: #334155;
-  }
+[data-theme="dark"] .education-management-v1656 {
+  color: var(--ink, #11201b);
 }
-@media (prefers-color-scheme: dark) {
-  .education-management-v1656__weekdays {
-    border-color: #334155;
-    background: #111827;
-    color: #e5e7eb;
-  }
-  .education-management-v1656__weekdays label {
-    background: #1e293b;
-  }
+[data-theme="dark"] .education-management-v1656__heading p,
+[data-theme="dark"] .education-management-v1656__intro p,
+[data-theme="dark"] .education-management-v1656__day small,
+[data-theme="dark"] .education-management-v1656__lesson small,
+[data-theme="dark"] .education-management-v1656__cards small,
+[data-theme="dark"] .education-management-v1656__muted,
+[data-theme="dark"] .education-management-v1656__summary-line,
+[data-theme="dark"] .education-management-v1656__details p,
+[data-theme="dark"] .education-management-v1656__history small,
+[data-theme="dark"] .education-management-v1656__teacher em,
+[data-theme="dark"] .education-management-v1656__modal p {
+  color: var(--soft, #5c6e66);
+}
+[data-theme="dark"] .education-management-v1656__intro,
+[data-theme="dark"] .education-management-v1656__day,
+[data-theme="dark"] .education-management-v1656__cards > article,
+[data-theme="dark"] .education-management-v1656__totals,
+[data-theme="dark"] .education-management-v1656__toolbar,
+[data-theme="dark"] .education-management-v1656__lesson,
+[data-theme="dark"] .education-management-v1656__filters input,
+[data-theme="dark"] .education-management-v1656__filters select,
+[data-theme="dark"] .education-management-v1656__actions button,
+[data-theme="dark"] .education-management-v1656__tabs button,
+[data-theme="dark"] .education-management-v1656__history article,
+[data-theme="dark"] .education-management-v1656__teacher,
+[data-theme="dark"] .education-management-v1656__month,
+[data-theme="dark"] .education-management-v1656__search,
+[data-theme="dark"] .education-management-v1656__modal,
+[data-theme="dark"] .education-management-v1656__modal input,
+[data-theme="dark"] .education-management-v1656__modal select,
+[data-theme="dark"] .education-management-v1656__modal textarea,
+[data-theme="dark"] .education-management-v1656__modal-actions button {
+  border-color: var(--line, #e4ebe7);
+  background: var(--card, #fff);
+  color: var(--ink, #11201b);
+}
+[data-theme="dark"] .education-management-v1656__totals b {
+  color: var(--ink, #11201b);
+}
+[data-theme="dark"] .education-management-v1656__details {
+  border-color: var(--line, #e4ebe7);
+}
+[data-theme="dark"] .education-management-v1656__weekdays {
+  border-color: var(--line, #e4ebe7);
+  background: var(--card, #fff);
+  color: var(--ink, #11201b);
+}
+[data-theme="dark"] .education-management-v1656__weekdays label {
+  background: #1e293b;
 }

@@ -63,6 +63,9 @@ export function BusinessCabinetDashboard({
     return (
       <section className="business-cabinet__group">
         <div className="business-cabinet__group-heading">
+          <span className="business-cabinet__group-icon" aria-hidden="true">
+            {title === "Onlaynlashtirish" ? "🌐" : "🗂"}
+          </span>
           <div>
             <h2>{title}</h2>
             <p>{caption}</p>
@@ -126,7 +129,9 @@ export function BusinessCabinetDashboard({
   return (
     <main className="business-cabinet" data-account={identity.account_id}>
       <section className="business-cabinet__panel">
-        <header className="business-cabinet__identity">
+        <header
+          className={`business-cabinet__identity${identity.actor_type !== "staff" ? " business-cabinet__identity--owner" : ""}`}
+        >
           <div className="business-cabinet__avatar">
             {profile.logo_url ? (
               <img
@@ -174,16 +179,7 @@ export function BusinessCabinetDashboard({
             <button type="button" disabled={busy} onClick={onLogout}>
               Chiqish
             </button>
-          ) : (
-            <button
-              type="button"
-              className="business-cabinet__user-switch-top"
-              disabled={busy}
-              onClick={onSwitchToUser}
-            >
-              Oddiy kabinet
-            </button>
-          )}
+          ) : null}
         </header>
 
         <div className="business-cabinet__stats">
@@ -240,6 +236,16 @@ export function BusinessCabinetDashboard({
               onlineMenuCards,
             )}
             {group("Tizimlashtirish", "Biznes ish jarayonlari", systemMenuCards)}
+            {identity.actor_type !== "staff" ? (
+              <button
+                type="button"
+                className="business-cabinet__switch"
+                disabled={busy}
+                onClick={onSwitchToUser}
+              >
+                Oddiy kabinet
+              </button>
+            ) : null}
           </div>
 
           <aside className="business-cabinet__activity">

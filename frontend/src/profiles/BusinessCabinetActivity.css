@@ -1,0 +1,81 @@
+/* So‘nggi faollik: monolit dashboard-activity ko‘rinishi. */
+.business-cabinet__activity {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--cab-line);
+  border-radius: 19px;
+  background: var(--cab-card);
+}
+
+.business-cabinet__activity-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 0;
+  border: 0;
+  border-bottom: 1px solid var(--cab-line);
+  color: var(--cab-ink);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.business-cabinet__activity-row:last-child {
+  border-bottom: 0;
+}
+
+.business-cabinet__activity-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  color: var(--cab-primary);
+  background: var(--cab-tint);
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.business-cabinet__activity-copy,
+.business-cabinet__activity-meta {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.business-cabinet__activity-copy b,
+.business-cabinet__activity-meta b {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.business-cabinet__activity-copy small,
+.business-cabinet__activity-meta small {
+  color: var(--cab-soft);
+  font-size: 10px;
+}
+
+.business-cabinet__activity-meta {
+  text-align: right;
+}
+
+.business-cabinet__empty {
+  display: grid;
+  gap: 5px;
+  padding: 20px 8px;
+  color: var(--cab-soft);
+  text-align: center;
+}
+
+.business-cabinet__empty b {
+  color: #dffbf5;
+  font-size: 11px;
+}
+
+.business-cabinet__empty span {
+  font-size: 9px;
+}
