@@ -43,9 +43,10 @@ import {
   supportsPaymentsApi,
 } from "../payments/SubscriptionsPayments";
 import { AccountSettings } from "../settings/AccountSettings";
+import "./BusinessProfile.css";
 import "./Cabinet.css";
-import "./BusinessCabinetDashboardParity.css";
 import "./BusinessFollowCounts.css";
+import "./BusinessCabinetDashboardParity.css";
 import type { BusinessProfileApi } from "./business-profile-api";
 import {
   supportsAIAssistant,

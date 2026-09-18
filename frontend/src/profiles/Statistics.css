@@ -16,7 +16,7 @@
 .statistics-v1656__heading > button {
   border: 0;
   background: transparent;
-  color: #2563eb;
+  color: var(--primary, #0e8c84);
   font-weight: 700;
   cursor: pointer;
 }
@@ -26,7 +26,7 @@
 }
 .statistics-v1656__heading p {
   margin: 3px 0 0;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .statistics-v1656__periods {
   display: flex;
@@ -42,15 +42,15 @@
   padding: 0 12px;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
-  background: #fff;
+  background: var(--card, #fff);
   color: #475569;
   font-weight: 750;
   cursor: pointer;
 }
 .statistics-v1656__periods button.active,
 .statistics-v1656__metrics button.active {
-  border-color: #2563eb;
-  background: #2563eb;
+  border-color: var(--primary, #0e8c84);
+  background: var(--primary, #0e8c84);
   color: #fff;
 }
 .statistics-v1656__navigation {
@@ -64,7 +64,7 @@
   height: 36px;
   border: 1px solid #cbd5e1;
   border-radius: 10px;
-  background: #fff;
+  background: var(--card, #fff);
   font-weight: 800;
   cursor: pointer;
 }
@@ -85,11 +85,11 @@
   padding: 12px;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
-  background: #fff;
+  background: var(--card, #fff);
 }
 .statistics-v1656__financial small {
   display: block;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .statistics-v1656__financial strong {
   display: block;
@@ -119,7 +119,7 @@
 }
 .statistics-v1656__profit p {
   margin: 4px 0 0;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
   font-size: 12px;
 }
 .statistics-v1656__panel {
@@ -147,13 +147,13 @@
 }
 .statistics-v1656__chart text {
   font-size: 8.5px;
-  fill: #64748b;
+  fill: var(--soft, #5c6e66);
 }
 .statistics-v1656__zero {
   stroke: rgba(15, 23, 42, 0.16);
 }
 .statistics-v1656__bar--rev {
-  fill: #2563eb;
+  fill: var(--primary, #0e8c84);
 }
 .statistics-v1656__bar--exp {
   fill: #e53935;
@@ -213,12 +213,12 @@
   height: 6px;
 }
 .statistics-v1656__products article > i span {
-  background: #2563eb;
+  background: var(--primary, #0e8c84);
 }
 .statistics-v1656__products article > small {
   display: block;
   margin-top: 3px;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .statistics-v1656__stock > div,
 .statistics-v1656__employees > div {
@@ -231,7 +231,7 @@
 .statistics-v1656__empty {
   padding: 24px;
   text-align: center;
-  color: #64748b;
+  color: var(--soft, #5c6e66);
 }
 .statistics-v1656__error {
   padding: 10px 12px;
@@ -257,35 +257,33 @@
     font-size: 13px;
   }
 }
-@media (prefers-color-scheme: dark) {
-  .statistics-v1656 {
-    color: #e5e7eb;
-  }
-  .statistics-v1656__heading p,
-  .statistics-v1656__financial small,
-  .statistics-v1656__profit p,
-  .statistics-v1656__products article > small,
-  .statistics-v1656__empty {
-    color: #94a3b8;
-  }
-  .statistics-v1656__periods button,
-  .statistics-v1656__metrics button,
-  .statistics-v1656__navigation button,
-  .statistics-v1656__financial article,
-  .statistics-v1656__panel {
-    border-color: #334155;
-    background: #111827;
-    color: #e5e7eb;
-  }
-  .statistics-v1656__progress-row > i,
-  .statistics-v1656__products article > i {
-    background: rgba(148, 163, 184, 0.17);
-  }
-  .statistics-v1656__stock > div + div,
-  .statistics-v1656__employees > div + div {
-    border-color: #1f2937;
-  }
-  .statistics-v1656__chart text {
-    fill: #94a3b8;
-  }
+[data-theme="dark"] .statistics-v1656 {
+  color: var(--ink, #11201b);
+}
+[data-theme="dark"] .statistics-v1656__heading p,
+[data-theme="dark"] .statistics-v1656__financial small,
+[data-theme="dark"] .statistics-v1656__profit p,
+[data-theme="dark"] .statistics-v1656__products article > small,
+[data-theme="dark"] .statistics-v1656__empty {
+  color: var(--soft, #5c6e66);
+}
+[data-theme="dark"] .statistics-v1656__periods button,
+[data-theme="dark"] .statistics-v1656__metrics button,
+[data-theme="dark"] .statistics-v1656__navigation button,
+[data-theme="dark"] .statistics-v1656__financial article,
+[data-theme="dark"] .statistics-v1656__panel {
+  border-color: var(--line, #e4ebe7);
+  background: var(--card, #fff);
+  color: var(--ink, #11201b);
+}
+[data-theme="dark"] .statistics-v1656__progress-row > i,
+[data-theme="dark"] .statistics-v1656__products article > i {
+  background: rgba(148, 163, 184, 0.17);
+}
+[data-theme="dark"] .statistics-v1656__stock > div + div,
+[data-theme="dark"] .statistics-v1656__employees > div + div {
+  border-color: var(--line, #e4ebe7);
+}
+[data-theme="dark"] .statistics-v1656__chart text {
+  fill: var(--soft, #5c6e66);
 }

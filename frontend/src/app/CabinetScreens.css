@@ -1,0 +1,283 @@
+/* Manba: Shirinhaker/monolitkoprik@2bfd727, static/index.html.
+ * .screen/.phone: 720px planshet, 1080px desktop; dashboard max 1040px.
+ * Faqat tizimga kirgan kabinetga tegishli; public/auth ekranlariga o'tmaydi. */
+.account-cabinet {
+  --text: var(--ink);
+  --muted: var(--soft);
+  --koprik-bg: var(--bg);
+  --koprik-card: var(--card);
+  --koprik-ink: var(--ink);
+  --koprik-text: var(--ink);
+  --koprik-soft: var(--soft);
+  --koprik-line: var(--line);
+  --koprik-primary: var(--primary);
+  --koprik-primary-ink: var(--primary-ink);
+  --koprik-primary-tint: var(--primary-tint);
+  --koprik-shadow: var(--shadow);
+  --cabinet-width: 420px;
+  --cabinet-gutter: 14px;
+  min-width: 0;
+  color: var(--ink);
+  background: var(--bg);
+  font-family: var(--font-b);
+}
+
+.account-cabinet
+  > :is(main, .ai1656, [data-screen="pickloc"]):not(
+    .business-cabinet,
+    .user-cabinet-v1656,
+    .order-detail-sheet
+  ) {
+  width: min(100%, var(--cabinet-width));
+  max-width: var(--cabinet-width);
+  min-width: 0;
+  min-height: 0;
+  margin: 0 auto;
+  padding: 14px var(--cabinet-gutter) max(32px, env(safe-area-inset-bottom));
+}
+
+/* Bosh ekrandagi tashqi panel ham monolitdagi 1040px konteynerga mos. */
+.app-shell:has(.account-cabinet :is(.business-cabinet, .user-cabinet-v1656)) > .topbar {
+  width: min(100%, 420px);
+  margin-inline: auto;
+}
+
+.account-cabinet :is(h1, h2, h3, h4) {
+  font-family: var(--font-d);
+}
+
+.account-cabinet
+  :is(
+    .business-online__heading,
+    .business-profile-editor__heading,
+    .user-profile-editor-v1656__head,
+    .messages-v1656__heading,
+    .notifications-v1656__heading,
+    .cash-v1656__heading,
+    .expenses-v1656__heading,
+    .debt-v1656__heading,
+    .warehouse-v1656__heading,
+    .statistics-v1656__heading,
+    .education-statistics-v1656__heading,
+    .education-management-v1656__heading,
+    .staff-v1656__header,
+    .specialist-v1656__toolbar,
+    .cabinet-data-view__heading
+  ) {
+  min-width: 0;
+  gap: 10px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.account-cabinet
+  :is(
+    .business-online__heading,
+    .business-profile-editor__heading,
+    .user-profile-editor-v1656__head,
+    .cash-v1656__heading,
+    .expenses-v1656__heading,
+    .debt-v1656__heading,
+    .warehouse-v1656__heading,
+    .statistics-v1656__heading,
+    .education-statistics-v1656__heading,
+    .education-management-v1656__heading,
+    .staff-v1656__header,
+    .specialist-v1656__toolbar
+  )
+  h1 {
+  font-size: 20px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.account-cabinet
+  :is(
+    .business-online__heading,
+    .business-profile-editor__heading,
+    .user-profile-editor-v1656__head,
+    .cash-v1656__heading,
+    .expenses-v1656__heading,
+    .debt-v1656__heading,
+    .warehouse-v1656__heading,
+    .statistics-v1656__heading,
+    .education-statistics-v1656__heading,
+    .education-management-v1656__heading,
+    .staff-v1656__header,
+    .specialist-v1656__toolbar
+  )
+  > button:first-child {
+  flex: none;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  background: var(--card);
+}
+
+.account-cabinet :is(header, form) > div {
+  min-width: 0;
+}
+.account-cabinet button:focus-visible,
+.account-cabinet a:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+
+/* Sozlamalarning ichki sahifalari ham umumiy ekran kengligiga ergashadi. */
+.account-cabinet .account-settings-v1656 {
+  --settings-primary: var(--primary);
+  --settings-ink: var(--ink);
+  --settings-soft: var(--soft);
+  --settings-line: var(--line);
+  background: var(--bg);
+}
+.account-cabinet .account-settings-v1656__topbar {
+  min-height: 48px;
+  padding: 0;
+  margin-bottom: 16px;
+  border: 0;
+  background: transparent;
+}
+.account-cabinet
+  :is(
+    .account-settings-v1656__rows,
+    .account-settings-v1656__form,
+    .account-settings-v1656__faq-list
+  ) {
+  width: 100%;
+  margin: 0;
+}
+
+.account-cabinet :is(.business-profile-card, .user-profile-card-v1656) {
+  border: 1px solid #29463d;
+  border-radius: 22px;
+  color: #edf7f3;
+  background: #10201b;
+  box-shadow: 0 16px 42px rgb(3 15 12 / 18%);
+}
+.account-cabinet .business-profile-card__main > div {
+  flex-wrap: wrap;
+}
+.account-cabinet .business-profile-card__logo {
+  width: 60px;
+  height: 60px;
+}
+
+/* Monolitdagi ro'yxat, tarix, chat va formalar och fonda saqlanadi. */
+.account-cabinet .business-online__card,
+.account-cabinet .business-online__form,
+.account-cabinet .business-online__product-grid article {
+  border-color: var(--line);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.account-cabinet .messages-v1656 {
+  min-height: 0;
+}
+.account-cabinet .ai1656__list {
+  min-height: 220px;
+  max-height: min(58dvh, 640px);
+}
+
+@media (min-width: 720px) {
+  .account-cabinet {
+    --cabinet-width: 600px;
+  }
+}
+
+@media (min-width: 1080px) {
+  .account-cabinet {
+    --cabinet-width: 1440px;
+    --cabinet-gutter: 34px;
+  }
+  .account-cabinet
+    > :is(main, .ai1656, [data-screen="pickloc"]):not(
+      .business-cabinet,
+      .user-cabinet-v1656,
+      .order-detail-sheet
+    ) {
+    padding-top: 22px;
+  }
+}
+
+/* Balandligi kichik yoki yonboshlatilgan telefonda ham pastki amal yetarli. */
+.account-cabinet
+  :is(
+    .expenses-v1656__modal,
+    .warehouse-v1656__modal,
+    .payment-modal-card,
+    .order-detail-sheet,
+    .order-sheet
+  ) {
+  max-height: calc(100vh - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+}
+
+@media (max-width: 719px) {
+  .account-cabinet {
+    --cabinet-gutter: 10px;
+  }
+  .account-cabinet
+    :is(
+      .cash-v1656__heading,
+      .expenses-v1656__heading,
+      .debt-v1656__heading,
+      .warehouse-v1656__heading,
+      .staff-v1656__header,
+      .specialist-v1656__toolbar
+    ) {
+    flex-wrap: wrap;
+  }
+  .account-cabinet .business-online__heading {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .account-cabinet .business-online__heading > button:last-child:not(:first-child) {
+    grid-column: 1 / -1;
+  }
+  .account-cabinet .business-profile-editor__heading {
+    flex-wrap: wrap;
+  }
+  .account-cabinet .user-profile-share-v1656 > div:not(.user-profile-share-v1656__qr) {
+    flex-wrap: wrap;
+  }
+  .account-cabinet .user-profile-share-v1656 input {
+    flex: 1 1 180px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .account-cabinet *,
+  .account-cabinet *::before,
+  .account-cabinet *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Kichik ekranlarda tab yozuvi kesilmasin, xabarlar maydoni eni cheklansin. */
+.account-cabinet .order-tabs .seg-b {
+  min-height: 44px;
+  height: auto;
+  padding-block: 8px;
+}
+.account-cabinet .messages-v1656 .chat-bar {
+  min-width: 0;
+}
+.account-cabinet .messages-v1656 .chat-bar textarea {
+  min-width: 0;
+}
+
+@media (min-width: 720px) {
+  .app-shell:has(.account-cabinet :is(.business-cabinet, .user-cabinet-v1656))
+    > .topbar {
+    width: min(100%, 1040px);
+  }
+}

@@ -5,6 +5,8 @@ import { BusinessProfile } from "../profiles/BusinessProfile";
 import { UserProfile } from "../profiles/UserProfile";
 import { SessionStatus } from "./SessionStatus";
 import { type AppApi, supportsAuthFlow, supportsProfiles } from "./app-api";
+import "./CabinetScreens.css";
+import "./CabinetForms.css";
 
 type AccountContentProps = {
   api: AppApi;
@@ -56,24 +58,28 @@ export function AccountContent({
     return <Cabinet kind={session.status} name={session.identity.name} />;
   }
 
-  return session.status === "user" ? (
-    <UserProfile
-      api={api}
-      identity={session.identity}
-      onLogout={onLogout}
-      onOpenDriverCabinet={onOpenDriverCabinet}
-      onOpenPublicListing={onOpenPublicListing}
-      onOpenPublicProfile={onOpenPublicProfile}
-      onSwitched={onSwitched}
-    />
-  ) : (
-    <BusinessProfile
-      api={api}
-      identity={session.identity}
-      onLogout={onLogout}
-      onOpenPublicListing={onOpenPublicListing}
-      onOpenPublicProfile={onOpenPublicProfile}
-      onSwitched={onSwitched}
-    />
+  return (
+    <div className="account-cabinet">
+      {session.status === "user" ? (
+        <UserProfile
+          api={api}
+          identity={session.identity}
+          onLogout={onLogout}
+          onOpenDriverCabinet={onOpenDriverCabinet}
+          onOpenPublicListing={onOpenPublicListing}
+          onOpenPublicProfile={onOpenPublicProfile}
+          onSwitched={onSwitched}
+        />
+      ) : (
+        <BusinessProfile
+          api={api}
+          identity={session.identity}
+          onLogout={onLogout}
+          onOpenPublicListing={onOpenPublicListing}
+          onOpenPublicProfile={onOpenPublicProfile}
+          onSwitched={onSwitched}
+        />
+      )}
+    </div>
   );
 }

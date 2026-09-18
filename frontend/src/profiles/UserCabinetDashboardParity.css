@@ -7,12 +7,13 @@
  * qilingan holda o'sha farqni bekor qiladi.
  */
 .user-cabinet-v1656 {
-  width: min(1040px, calc(100% - 24px));
+  width: min(1040px, 100%);
+  padding: 14px 14px 48px;
 }
 
 .user-cabinet-v1656__identity {
-  padding: 8px 2px 12px;
-  border-bottom: 0;
+  padding: 4px 2px 18px;
+  border-bottom: 1px solid var(--user-line);
 }
 
 .user-cabinet-v1656__metrics {
@@ -21,7 +22,7 @@
 
 @media (min-width: 720px) {
   .user-cabinet-v1656__identity {
-    padding: 10px 4px 16px;
+    padding: 4px 2px 18px;
   }
 
   .user-cabinet-v1656__metrics {
@@ -89,4 +90,31 @@
   .user-cabinet-v1656__menu > button {
     min-height: 132px;
   }
+}
+
+@media (min-width: 1080px) {
+  .user-cabinet-v1656 {
+    padding: 22px 34px 48px;
+  }
+}
+
+@media (max-width: 719px) {
+  .user-cabinet-v1656 {
+    width: min(420px, 100%);
+    padding: 0 10px 24px;
+  }
+  .user-cabinet-v1656__shell {
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+    padding: 14px 10px 24px;
+  }
+}
+
+.user-cabinet-v1656__metrics strong {
+  overflow-wrap: anywhere;
+}
+.user-cabinet-v1656__menu-panel,
+.user-cabinet-v1656__activity {
+  min-width: 0;
 }

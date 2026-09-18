@@ -1,3 +1,5 @@
+// Asosiy kabinet CSS'i komponentlarning parity qoidalaridan oldin yuklanadi.
+import "./profiles/BusinessProfile.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -7,7 +9,6 @@ import { App } from "./app/App";
 import { resolveAdminEntryRedirect } from "./app/entry-routing";
 import { resolveAuthContext } from "./auth/adapter";
 import "./profiles/BusinessOnlineEditingViews.css";
-import "./profiles/BusinessProfile.css";
 
 const rootElement = document.getElementById("root");
 if (rootElement === null) {
