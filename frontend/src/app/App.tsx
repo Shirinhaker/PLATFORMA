@@ -17,6 +17,7 @@ import {
 import type { MessagePeer } from "../messages/Messages";
 import { useOrderCustomerProfile } from "./use-order-customer-profile";
 import { AccountContent } from "./AccountContent";
+import { CatalogResultDialog } from "./CatalogResultDialog";
 import { AppFrame } from "./AppFrame";
 import type { AppApi } from "./app-api";
 import { appTitle } from "./app-title";
@@ -32,6 +33,7 @@ export function App({ api }: { api: AppApi }) {
   const [failed, setFailed] = useState(false);
   const [homeSearchResultsActive, setHomeSearchResultsActive] = useState(false);
   const [openedProfile, setOpenedProfile] = useState<OpenedProfile | null>(null);
+  const [openedItemId, setOpenedItemId] = useState<string | null>(null);
   const [openedListing, setOpenedListing] = useState<OpenedListing | null>(null);
   const [openedChat, setOpenedChat] = useState<MessagePeer | null>(null);
   const [carts, setCarts] = useState<CartState>({});
@@ -235,6 +237,7 @@ export function App({ api }: { api: AppApi }) {
   const title = appTitle(navigation);
 
   function openHome() {
+    setOpenedItemId(null);
     setOpenedProfile(null);
     setOpenedListing(null);
     setOpenedChat(null);
@@ -251,6 +254,10 @@ export function App({ api }: { api: AppApi }) {
       publicId: string,
       ownerPublicId?: string,
     ) => {
+      if ((kind === "product" || kind === "service") && api.getCatalogItem) {
+        setOpenedItemId(publicId);
+        return;
+      }
       if ((kind === "user" || kind === "business") && getPublicProfile) {
         setOpenedListing(null);
         setOpenedChat(null);
@@ -276,7 +283,7 @@ export function App({ api }: { api: AppApi }) {
         setHomeSearchResultsActive(false);
       }
     },
-    [getPublicListing, getPublicProfile],
+    [api, getPublicListing, getPublicProfile],
   );
 
   const updateOpenedProfileTitle = useCallback((title: string) => {
@@ -378,49 +385,64 @@ export function App({ api }: { api: AppApi }) {
   }
 
   const publicContent = (
-    <PublicContent
-      api={api}
-      session={session}
-      navigation={navigation}
-      authenticated={authenticated}
-      publicFeatures={publicFeatures}
-      openedChat={openedChat}
-      openedListing={openedListing}
-      openedProfile={openedProfile}
-      carts={carts}
-      cartFilter={cartFilter}
-      orderCustomer={orderCustomer}
-      homeLocation={homeLocation}
-      getPublicListing={getPublicListing}
-      getPublicProfile={getPublicProfile}
-      getCatalogItems={getCatalogItems}
-      searchPublic={searchPublic}
-      getAdvertisements={getAdvertisements}
-      getDistrictOffers={getDistrictOffers}
-      getFollowedProfiles={getFollowedProfiles}
-      getHomeMap={getHomeMap}
-      recordAdvertisementClick={recordAdvertisementClick}
-      recordAdvertisementViews={recordAdvertisementViews}
-      listingApi={listingApi}
-      storyApi={storyApi}
-      createOrder={createOrder}
-      accountContent={renderAccount()}
-      dispatch={dispatch}
-      setOpenedChat={setOpenedChat}
-      setOpenedListing={setOpenedListing}
-      setOpenedProfile={setOpenedProfile}
-      setCarts={setCarts}
-      setCartFilter={setCartFilter}
-      setHomeLocation={setHomeLocation}
-      setHomeSearchResultsActive={setHomeSearchResultsActive}
-      openAuth={openAuth}
-      openQueueBooking={openQueueBooking}
-      openCourseEnrollment={openCourseEnrollment}
-      openPublicResult={openPublicResult}
-      showQueueMessage={showQueueMessage}
-      updateOpenedListingTitle={updateOpenedListingTitle}
-      updateOpenedProfileTitle={updateOpenedProfileTitle}
-    />
+    <>
+      <PublicContent
+        api={api}
+        session={session}
+        navigation={navigation}
+        authenticated={authenticated}
+        publicFeatures={publicFeatures}
+        openedChat={openedChat}
+        openedListing={openedListing}
+        openedProfile={openedProfile}
+        carts={carts}
+        cartFilter={cartFilter}
+        orderCustomer={orderCustomer}
+        homeLocation={homeLocation}
+        getPublicListing={getPublicListing}
+        getPublicProfile={getPublicProfile}
+        getCatalogItems={getCatalogItems}
+        searchPublic={searchPublic}
+        getAdvertisements={getAdvertisements}
+        getDistrictOffers={getDistrictOffers}
+        getFollowedProfiles={getFollowedProfiles}
+        getHomeMap={getHomeMap}
+        recordAdvertisementClick={recordAdvertisementClick}
+        recordAdvertisementViews={recordAdvertisementViews}
+        listingApi={listingApi}
+        storyApi={storyApi}
+        createOrder={createOrder}
+        accountContent={renderAccount()}
+        dispatch={dispatch}
+        setOpenedChat={setOpenedChat}
+        setOpenedListing={setOpenedListing}
+        setOpenedProfile={setOpenedProfile}
+        setCarts={setCarts}
+        setCartFilter={setCartFilter}
+        setHomeLocation={setHomeLocation}
+        setHomeSearchResultsActive={setHomeSearchResultsActive}
+        openAuth={openAuth}
+        openQueueBooking={openQueueBooking}
+        openCourseEnrollment={openCourseEnrollment}
+        openPublicResult={openPublicResult}
+        showQueueMessage={showQueueMessage}
+        updateOpenedListingTitle={updateOpenedListingTitle}
+        updateOpenedProfileTitle={updateOpenedProfileTitle}
+      />
+      {openedItemId ? (
+        <CatalogResultDialog
+          key={openedItemId}
+          api={api}
+          publicId={openedItemId}
+          authenticated={authenticated}
+          onClose={() => setOpenedItemId(null)}
+          onOpenOwner={(publicId) => openPublicResult("business", publicId)}
+          onNeedQueueLogin={() => openAuth()}
+          onBookQueue={openQueueBooking}
+          onQueueMessage={showQueueMessage}
+        />
+      ) : null}
+    </>
   );
 
   return (
