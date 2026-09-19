@@ -26,15 +26,13 @@ function guestApi() {
     getSession: vi
       .fn()
       .mockRejectedValue(Object.assign(new Error("unauthorized"), { status: 401 })),
-    getPublicFeatures: vi
-      .fn()
-      .mockResolvedValue({
-        listings: true,
-        stories: false,
-        chat: false,
-        systemization: false,
-        taxi: false,
-      }),
+    getPublicFeatures: vi.fn().mockResolvedValue({
+      listings: true,
+      stories: false,
+      chat: false,
+      systemization: false,
+      taxi: false,
+    }),
     getListingCounts: vi.fn().mockResolvedValue({ uy: 1 }),
     getPublicListings: vi.fn().mockResolvedValue([listing]),
     toggleListingSave: vi.fn(),
