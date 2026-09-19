@@ -1,3 +1,4 @@
+import { useState, type ComponentProps } from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -5,8 +6,29 @@ import { describe, expect, it, vi } from "vitest";
 import { ListingDetail } from "./ListingDetail";
 import { ListingPage } from "./ListingPage";
 import { OwnerListings } from "./OwnerListings";
-import { PublicListings } from "./PublicListings";
+import { PublicListings as PublicListingsView } from "./PublicListings";
 import { SavedListings } from "./SavedListings";
+
+function PublicListings(
+  props: Omit<
+    ComponentProps<typeof PublicListingsView>,
+    "openedListingId" | "onOpenListing"
+  >,
+) {
+  const [opened, setOpened] = useState<string | null>(null);
+  return (
+    <>
+      {opened ? (
+        <button onClick={() => setOpened(null)}>E’lonlarga qaytish</button>
+      ) : null}
+      <PublicListingsView
+        {...props}
+        openedListingId={opened}
+        onOpenListing={setOpened}
+      />
+    </>
+  );
+}
 
 const leaflet = vi.hoisted(() => {
   const map = {
@@ -53,7 +75,7 @@ const listing = {
 };
 
 describe("v1656 public E'lonlar", () => {
-  it("renders six categories, loads the selected category and opens its accordion", async () => {
+  it("renders six categories, loads the selected category and opens a separate detail screen and returns to the category", async () => {
     const user = userEvent.setup();
     const api = {
       getListingCounts: vi.fn().mockResolvedValue({ uy: 1 }),
@@ -76,6 +98,8 @@ describe("v1656 public E'lonlar", () => {
 
     await user.click(screen.getByRole("button", { name: /3 xonali kvartira/ }));
     expect(screen.getByText("Markazda, barcha qulayliklar bor")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Uy-joy/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: listing.title })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Bog'lanish" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "🔖 Saqlash" })).toBeInTheDocument();
 
@@ -85,6 +109,10 @@ describe("v1656 public E'lonlar", () => {
     expect(
       await screen.findByRole("button", { name: "✓ Saqlangan" }),
     ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "E’lonlarga qaytish" }));
+    expect(screen.getByRole("button", { name: /Uy-joy/ })).toHaveClass("on");
+    expect(screen.queryByText(listing.descr)).not.toBeInTheDocument();
+    expect(api.getPublicListings).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the exact v1656 empty-category text", async () => {

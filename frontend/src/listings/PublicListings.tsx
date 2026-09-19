@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import type { ApiClient } from "../api/client";
 import type { ListingCategory, ListingRead } from "../api/types";
@@ -12,6 +12,8 @@ type ListingsApi = Pick<
 
 type Props = {
   api: ListingsApi;
+  openedListingId: string | null;
+  onOpenListing(publicId: string, title: string): void;
   authenticated: boolean;
   onNeedLogin?: () => void;
   onOpenOwner(kind: "user" | "business", publicId: string): void;
@@ -75,6 +77,8 @@ function formatListingTime(value: string) {
 
 export function PublicListings({
   api,
+  openedListingId,
+  onOpenListing,
   authenticated,
   onNeedLogin,
   onOpenOwner,
@@ -83,7 +87,26 @@ export function PublicListings({
   const [category, setCategory] = useState<ListingCategory | null>(null);
   const [rows, setRows] = useState<ListingRead[]>([]);
   const [sort, setSort] = useState<Sort>("yangi");
-  const [opened, setOpened] = useState<string | null>(null);
+  const screenRef = useRef<HTMLElement>(null);
+  const listPosition = useRef({ scrollTop: 0, publicId: "" });
+  const previousOpenedId = useRef(openedListingId);
+
+  useLayoutEffect(() => {
+    if (previousOpenedId.current === openedListingId) return;
+    previousOpenedId.current = openedListingId;
+    const root = screenRef.current;
+    const scroller = root?.closest(".app-shell__content");
+    if (scroller)
+      scroller.scrollTop = openedListingId ? 0 : listPosition.current.scrollTop;
+    if (openedListingId) {
+      root?.focus({ preventScroll: true });
+    } else {
+      const card = Array.from(
+        root?.querySelectorAll<HTMLButtonElement>("[data-listing-id]") ?? [],
+      ).find((button) => button.dataset.listingId === listPosition.current.publicId);
+      card?.focus({ preventScroll: true });
+    }
+  }, [openedListingId]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -115,7 +138,6 @@ export function PublicListings({
 
   async function selectCategory(next: ListingCategory) {
     setCategory(next);
-    setOpened(null);
     setLoading(true);
     setError("");
     try {
@@ -149,9 +171,39 @@ export function PublicListings({
     }
   }
 
+  const openedRow = rows.find((row) => row.public_id === openedListingId);
+  if (openedRow) {
+    return (
+      <main
+        ref={screenRef}
+        tabIndex={-1}
+        aria-label={openedRow.title}
+        className="public-listing-page-v1656"
+      >
+        <article className="listing-page-card">
+          <h1 className="biz-title">{openedRow.title}</h1>
+          {error ? (
+            <p className="elon-hint" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <ListingDetail
+            compactMedia
+            listing={openedRow}
+            saving={saving === openedRow.public_id}
+            onContact={() =>
+              onOpenOwner(openedRow.owner_kind, openedRow.owner_public_id)
+            }
+            onSave={() => void save(openedRow)}
+          />
+        </article>
+      </main>
+    );
+  }
+
   const selected = CATEGORIES.find((item) => item.key === category);
   return (
-    <main className="public-listings-v1656">
+    <main ref={screenRef} className="public-listings-v1656">
       <section id="elonSection">
         <div className="sec-head" id="elonHead">
           <h2>E’lonlar</h2>
@@ -216,17 +268,21 @@ export function PublicListings({
                   const preview =
                     row.media.find((item) => item.type === "photo") ?? row.media[0];
                   const hasVideo = row.media.some((item) => item.type === "video");
-                  const open = opened === row.public_id;
                   return (
-                    <article
-                      className={`elon-wrap${open ? " is-open" : ""}`}
-                      key={row.public_id}
-                    >
+                    <article className="elon-wrap" key={row.public_id}>
                       <button
-                        aria-expanded={open}
-                        className={`elon-item public-listing-card${open ? " on" : ""}`}
+                        data-listing-id={row.public_id}
+                        className="elon-item public-listing-card"
                         type="button"
-                        onClick={() => setOpened(open ? null : row.public_id)}
+                        onClick={() => {
+                          listPosition.current = {
+                            scrollTop:
+                              screenRef.current?.closest(".app-shell__content")
+                                ?.scrollTop ?? 0,
+                            publicId: row.public_id,
+                          };
+                          onOpenListing(row.public_id, row.title);
+                        }}
                       >
                         <span
                           className="public-listing-card-media"
@@ -292,17 +348,6 @@ export function PublicListings({
                           ) : null}
                         </span>
                       </button>
-                      {open ? (
-                        <ListingDetail
-                          compactMedia
-                          listing={row}
-                          saving={saving === row.public_id}
-                          onContact={() =>
-                            onOpenOwner(row.owner_kind, row.owner_public_id)
-                          }
-                          onSave={() => void save(row)}
-                        />
-                      ) : null}
                     </article>
                   );
                 })}
