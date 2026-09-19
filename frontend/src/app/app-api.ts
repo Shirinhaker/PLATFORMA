@@ -13,6 +13,7 @@ type PublicSearchApi = Pick<
   ApiClient,
   | "searchPublic"
   | "getCatalogItems"
+  | "getCatalogItem"
   | "getAdvertisements"
   | "getPublicFeatures"
   | "getHomeMap"
