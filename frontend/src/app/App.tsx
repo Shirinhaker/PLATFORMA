@@ -254,10 +254,6 @@ export function App({ api }: { api: AppApi }) {
       publicId: string,
       ownerPublicId?: string,
     ) => {
-      if ((kind === "product" || kind === "service") && api.getCatalogItem) {
-        setOpenedItemId(publicId);
-        return;
-      }
       if ((kind === "user" || kind === "business") && getPublicProfile) {
         setOpenedListing(null);
         setOpenedChat(null);
@@ -277,6 +273,8 @@ export function App({ api }: { api: AppApi }) {
           focusItemPublicId: publicId,
         });
         setHomeSearchResultsActive(false);
+      } else if ((kind === "product" || kind === "service") && api.getCatalogItem) {
+        setOpenedItemId(publicId);
       } else if (kind === "listing" && getPublicListing) {
         setOpenedProfile(null);
         setOpenedListing({ publicId, title: "E’lon" });

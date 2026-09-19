@@ -285,6 +285,7 @@ export function ItemsEditorView({
                     <ItemCard
                       key={String(id)}
                       row={row}
+                      direction={direction}
                       id={id}
                       busy={actions.busy}
                       open={openMenu === menu}

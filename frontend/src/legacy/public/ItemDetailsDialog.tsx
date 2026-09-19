@@ -1,10 +1,10 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import type { PublicCatalogItem, PublicProfileItem } from "../../api/types";
+import type { PublicProfileItem } from "../../api/types";
 import "./ItemDetailsDialog.css";
 
 type Props = {
-  item?: PublicCatalogItem | PublicProfileItem;
+  item?: Omit<PublicProfileItem, "public_id" | "group_name">;
   education?: boolean;
   children?: ReactNode;
   onClose(): void;
@@ -32,7 +32,7 @@ export function ItemDetailsDialog({
       }
     };
   }, []);
-  const course = item && "group_name" in item ? item : undefined;
+  const course = item;
   return createPortal(
     <dialog
       ref={dialog}

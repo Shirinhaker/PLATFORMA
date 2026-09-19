@@ -5,6 +5,7 @@ import type { PublicCatalogItem, PublicProfileItem } from "../../api/types";
 import { CatalogItemCard } from "./CatalogItemCard";
 import { PublicProfile } from "./PublicProfile";
 import { App } from "../../app/App";
+import { ItemsEditorView } from "../../profiles/BusinessItemsView";
 
 // jsdom does not implement native dialog top-layer APIs. Browser focus trapping
 // and viewport layout still need a real-browser check.
@@ -62,43 +63,37 @@ function homeApi(catalogItem = item) {
     getSession: vi
       .fn()
       .mockRejectedValue(Object.assign(new Error("unauthorized"), { status: 401 })),
-    getPublicFeatures: vi
-      .fn()
-      .mockResolvedValue({
-        listings: false,
-        stories: false,
-        chat: false,
-        systemization: false,
-        taxi: false,
-      }),
+    getPublicFeatures: vi.fn().mockResolvedValue({
+      listings: false,
+      stories: false,
+      chat: false,
+      systemization: false,
+      taxi: false,
+    }),
     getCatalogItem: vi.fn().mockResolvedValue(catalogItem),
     getPublicProfile: vi.fn(),
-    getDistrictOffers: vi
-      .fn()
-      .mockResolvedValue({
-        needs_district: false,
-        items: [
-          {
-            kind: catalogItem.kind,
-            content_public_id: catalogItem.public_id,
-            title: catalogItem.name,
-            business_name: catalogItem.owner_name,
-            image: "",
-            business_logo: "",
-            price: catalogItem.price_text,
-            unit: catalogItem.unit,
-          },
-        ],
-      }),
-    searchPublic: vi
-      .fn()
-      .mockResolvedValue({
-        items: [{ ...catalogItem, description: catalogItem.note, public_username: "" }],
-        page: 1,
-        pages: 1,
-        total: 1,
-        page_size: 20,
-      }),
+    getDistrictOffers: vi.fn().mockResolvedValue({
+      needs_district: false,
+      items: [
+        {
+          kind: catalogItem.kind,
+          content_public_id: catalogItem.public_id,
+          title: catalogItem.name,
+          business_name: catalogItem.owner_name,
+          image: "",
+          business_logo: "",
+          price: catalogItem.price_text,
+          unit: catalogItem.unit,
+        },
+      ],
+    }),
+    searchPublic: vi.fn().mockResolvedValue({
+      items: [{ ...catalogItem, description: catalogItem.note, public_username: "" }],
+      page: 1,
+      pages: 1,
+      total: 1,
+      page_size: 20,
+    }),
   };
 }
 
@@ -193,25 +188,164 @@ describe("Mahsulot va xizmat ma’lumot oynasi", () => {
       expect(api.getDistrictOffers).toHaveBeenCalledTimes(1);
     },
   );
-  it("retains search text and results after closing the item", async () => {
-    const user = userEvent.setup();
+  it.each(["product", "service"] as const)(
+    "opens the owner first for a searched %s, then opens details only on the profile card",
+    async (kind) => {
+      const user = userEvent.setup();
+      const selected = { ...item, kind };
+      const api = homeApi(selected);
+      api.getCatalogItem.mockRejectedValue(
+        new Error("Mahsulot yoki xizmat topilmadi."),
+      );
+      api.getPublicProfile.mockResolvedValue({
+        kind: "business",
+        public_id: "b_test",
+        name: "Sinov do‘koni",
+        direction: "Savdo",
+        activity_type: "",
+        public_username: "",
+        description: "",
+        address: "",
+        phone: "",
+        image_url: "",
+        crop_x: 50,
+        crop_y: 50,
+        crop_zoom: 1,
+        followers_count: 0,
+        specialist: null,
+        items: [{ ...selected, group_name: "Mevalar" }],
+        listings: [],
+      });
+      api.getDistrictOffers.mockResolvedValue({ items: [], needs_district: false });
+      const { container } = render(<App api={api} />);
+      const query = await screen.findByPlaceholderText("Nima qidiryapsiz?");
+      await user.type(query, "sinov");
+      await user.click(screen.getByRole("button", { name: "Qidirish" }));
+      await user.click(await screen.findByRole("button", { name: /Sinov mahsuloti/ }));
+      const card = await screen.findByRole("button", {
+        name: /Sinov mahsuloti haqida/,
+      });
+      expect(api.getPublicProfile).toHaveBeenCalledWith("business", "b_test");
+      expect(card.closest("article")).toHaveClass("is-search-target");
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(api.getCatalogItem).not.toHaveBeenCalled();
+      const scroller = container.querySelector(".app-shell__content")!;
+      scroller.scrollTop = 310;
+      await user.click(card);
+      const dialog = screen.getByRole("dialog", { name: selected.name });
+      expect(within(dialog).getByText(/To‘liq mahsulot tavsifi/)).toBeVisible();
+      await user.click(
+        within(dialog).getByRole("button", { name: "Ma’lumot oynasini yopish" }),
+      );
+      expect(card).toHaveFocus();
+      expect(scroller.scrollTop).toBe(310);
+      expect(api.getPublicProfile).toHaveBeenCalledTimes(1);
+      expect(api.getCatalogItem).not.toHaveBeenCalled();
+    },
+  );
+  it("opens the owner profile from a district offer that includes its business id", async () => {
     const api = homeApi();
-    api.getDistrictOffers.mockResolvedValue({ items: [], needs_district: false });
+    api.getDistrictOffers.mockResolvedValue({
+      needs_district: false,
+      items: [
+        {
+          kind: item.kind,
+          content_public_id: item.public_id,
+          business_public_id: "b_test",
+          title: item.name,
+          business_name: item.owner_name,
+          image: "",
+          business_logo: "",
+          price: item.price_text,
+          unit: item.unit,
+        },
+      ],
+    });
+    api.getPublicProfile.mockResolvedValue({
+      kind: "business",
+      public_id: "b_test",
+      name: "Sinov do‘koni",
+      direction: "Savdo",
+      items: [{ ...item, group_name: "Mevalar" }],
+      listings: [],
+    });
     render(<App api={api} />);
-    const query = await screen.findByPlaceholderText("Nima qidiryapsiz?");
-    await user.type(query, "sinov");
-    await user.click(screen.getByRole("button", { name: "Qidirish" }));
-    const result = await screen.findByRole("button", { name: /Sinov mahsuloti/ });
-    await user.click(result);
-    const dialog = await screen.findByRole("dialog", { name: item.name });
-    await user.click(
-      within(dialog).getByRole("button", { name: "Ma’lumot oynasini yopish" }),
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Sinov mahsuloti Sinov do‘koni/ }),
     );
-    expect(query).toHaveValue("sinov");
-    expect(result).toHaveFocus();
-    expect(api.searchPublic).toHaveBeenCalledTimes(1);
-    expect(api.getPublicProfile).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole("button", { name: /Sinov mahsuloti haqida/ }),
+    ).toBeInTheDocument();
+    expect(api.getPublicProfile).toHaveBeenCalledWith("business", "b_test");
+    expect(api.getCatalogItem).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+  it.each(["product", "service"] as const)(
+    "opens a cabinet %s card without mutating it and keeps the actions menu separate",
+    async (kind) => {
+      const user = userEvent.setup();
+      const actions = {
+        busy: false,
+        form: null,
+        draft: {},
+        setForm: vi.fn(),
+        setDraft: vi.fn(),
+        create: vi.fn(),
+        patch: vi.fn(),
+        remove: vi.fn(),
+        action: vi.fn(),
+      };
+      const row = {
+        id: 12,
+        name: "banan",
+        kind,
+        price: 25000,
+        unit: "kg",
+        description: "To‘liq izoh",
+        photo_file: "/media/banan.webp",
+      };
+      const { container } = render(
+        <ItemsEditorView
+          {...actions}
+          rows={[row]}
+          groups={[]}
+          query=""
+          setQuery={vi.fn()}
+          kind="all"
+          setKind={vi.fn()}
+        />,
+      );
+      const rail = container.querySelector(".item-hrow")!;
+      rail.scrollLeft = 120;
+      await user.click(screen.getByRole("button", { name: "banan amallari" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Tahrirlash" })).toBeVisible();
+      const card = screen.getByRole("button", { name: /banan haqida/ });
+      card.focus();
+      await user.keyboard("{Enter}");
+      const dialog = screen.getByRole("dialog", { name: "banan" });
+      expect(within(dialog).getByText("To‘liq izoh")).toBeVisible();
+      expect(within(dialog).getByRole("img", { name: "banan" })).toHaveAttribute(
+        "src",
+        "/media/banan.webp",
+      );
+      expect(actions.setForm).not.toHaveBeenCalled();
+      expect(actions.patch).not.toHaveBeenCalled();
+      expect(actions.remove).not.toHaveBeenCalled();
+      await user.click(
+        within(dialog).getByRole("button", { name: "Ma’lumot oynasini yopish" }),
+      );
+      expect(card).toHaveFocus();
+      expect(rail.scrollLeft).toBe(120);
+      await user.click(card);
+      await user.click(
+        within(screen.getByRole("dialog")).getByRole("button", { name: "Tahrirlash" }),
+      );
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(actions.setDraft).toHaveBeenCalledWith(row);
+      expect(actions.setForm).toHaveBeenCalledWith("items:edit");
+    },
+  );
   it("can retry failed loading and ignores a response after the window closes", async () => {
     const api = homeApi();
     api.getCatalogItem.mockRejectedValueOnce(new Error("Tarmoq xatosi"));
@@ -243,27 +377,25 @@ describe("Mahsulot va xizmat ma’lumot oynasi", () => {
   it("uses the existing cart action from a public profile item window", async () => {
     const profileItem: PublicProfileItem = { ...item, group_name: "Mevalar" };
     const onAddCartItem = vi.fn();
-    const getPublicProfile = vi
-      .fn()
-      .mockResolvedValue({
-        kind: "business",
-        public_id: "b_test",
-        name: "Sinov do‘koni",
-        direction: "Savdo",
-        activity_type: "",
-        public_username: "",
-        description: "",
-        address: "",
-        phone: "",
-        image_url: "",
-        crop_x: 50,
-        crop_y: 50,
-        crop_zoom: 1,
-        followers_count: 0,
-        specialist: null,
-        items: [profileItem],
-        listings: [],
-      });
+    const getPublicProfile = vi.fn().mockResolvedValue({
+      kind: "business",
+      public_id: "b_test",
+      name: "Sinov do‘koni",
+      direction: "Savdo",
+      activity_type: "",
+      public_username: "",
+      description: "",
+      address: "",
+      phone: "",
+      image_url: "",
+      crop_x: 50,
+      crop_y: 50,
+      crop_zoom: 1,
+      followers_count: 0,
+      specialist: null,
+      items: [profileItem],
+      listings: [],
+    });
     render(
       <PublicProfile
         authenticated
