@@ -219,9 +219,9 @@ Domen papkalari va hajmi:
 |---|---|---|---|
 | `profiles` | 33 982⚠️ | `orders` | 4 963 |
 | `legacy/public` | 9 116⚠️ | `dining` | 2 323 |
-| `api` | 6 467 | `listings` | 2 787 |
+| `api` | 6 467 | `listings` | 2 860 |
 | `admin` | 3 848 | `taxi` | 2 703 |
-| `app` | 3 732 | `queues` | 1 802 |
+| `app` | 3 842 | `queues` | 1 802 |
 | `auth` | 1 623 | `education` | 4 069 |
 | `documents` | 2 080 | `messages` | 1 451 |
 | qolganlari | har biri < 1 000 | | |

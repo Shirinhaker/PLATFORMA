@@ -248,6 +248,8 @@ export function PublicContent({
       return listingApi ? (
         <PublicListings
           api={listingApi}
+          openedListingId={openedListing?.publicId ?? null}
+          onOpenListing={(publicId, title) => setOpenedListing({ publicId, title })}
           authenticated={authenticated}
           onNeedLogin={() => openAuth()}
           onOpenOwner={(kind, publicId) => {

@@ -105,7 +105,8 @@ export function AppFrame({
     <AppShell
       authenticated={authenticated}
       title={
-        (openedChat || openedProfile || openedListing) && navigation.view === "home"
+        (openedChat || openedProfile || openedListing) &&
+        (navigation.view === "home" || navigation.view === "listings")
           ? openedChat
             ? "Suhbat"
             : (openedProfile?.title ?? openedListing?.title)
