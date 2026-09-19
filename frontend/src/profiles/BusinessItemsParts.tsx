@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { ItemDetailsDialog } from "../legacy/public/ItemDetailsDialog";
 
 import type { BusinessOnlineRecord } from "../api/business-online-types";
 import { recordId, recordText } from "./BusinessOnlineViews";
@@ -102,6 +103,7 @@ export function ItemCard({
   onEdit,
   onMove,
   onDelete,
+  direction = "",
 }: {
   row: BusinessOnlineRecord;
   id: number | string;
@@ -111,7 +113,9 @@ export function ItemCard({
   onEdit: () => void;
   onMove: () => void;
   onDelete: () => void;
+  direction?: string;
 }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const name = recordText(row, "name", "title") || "Nomsiz";
   const image = photo(row);
   return (
@@ -125,17 +129,28 @@ export function ItemCard({
       >
         ⋯
       </button>
-      {image && (
-        <div className="item-card2-img">
-          <img src={image} alt="" loading="lazy" />
+      <button
+        type="button"
+        className="item-details-trigger"
+        aria-label={`${name} haqida ma’lumot`}
+        aria-haspopup="dialog"
+        onClick={() => {
+          if (open) onToggle();
+          setDetailsOpen(true);
+        }}
+      >
+        {image && (
+          <div className="item-card2-img">
+            <img src={image} alt="" loading="lazy" />
+          </div>
+        )}
+        <div className="name">{name}</div>
+        <div className="price">{priceText(row)}</div>
+        <div className="note">
+          {recordText(row, "note", "description", "descr") || "Izoh yo'q"}
         </div>
-      )}
-      <div className="name">{name}</div>
-      <div className="price">{priceText(row)}</div>
-      <div className="note">
-        {recordText(row, "note", "description", "descr") || "Izoh yo'q"}
-      </div>
-      <span className="kind">{kindText(row.kind)}</span>
+        <span className="kind">{kindText(row.kind)}</span>
+      </button>
       {open && (
         <div className="item-menu on">
           <button type="button" onClick={onEdit}>
@@ -149,6 +164,42 @@ export function ItemCard({
           </button>
         </div>
       )}
+      {detailsOpen ? (
+        <ItemDetailsDialog
+          education={direction === "Ta'lim faoliyati"}
+          item={{
+            kind: itemKind(row),
+            name,
+            image_url: image,
+            price_text: priceText(row),
+            unit: recordText(row, "unit"),
+            note: recordText(row, "note", "description", "descr"),
+            queue_enabled: Number(row.queue_enabled) === 1,
+            course_mode:
+              row.course_mode === "online" || row.course_mode === "hybrid"
+                ? row.course_mode
+                : "offline",
+            course_duration: recordText(row, "course_duration"),
+            lesson_duration: Number(row.lesson_duration) || 0,
+            age_from: Number(row.age_from) || 0,
+            age_to: Number(row.age_to) || 0,
+            enrollment_status: row.enrollment_status === "closed" ? "closed" : "open",
+          }}
+          onClose={() => setDetailsOpen(false)}
+        >
+          <button
+            type="button"
+            className="btn btn-soft"
+            disabled={busy}
+            onClick={() => {
+              setDetailsOpen(false);
+              onEdit();
+            }}
+          >
+            Tahrirlash
+          </button>
+        </ItemDetailsDialog>
+      ) : null}
     </article>
   );
 }

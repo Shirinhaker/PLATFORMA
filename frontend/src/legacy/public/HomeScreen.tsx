@@ -331,7 +331,11 @@ export function HomeScreen({
   }
 
   function openOffer(item: PublicDistrictOffer) {
-    openResult(item.kind, item.content_public_id);
+    openResult(
+      item.kind,
+      item.content_public_id,
+      item.kind === "listing" ? undefined : item.business_public_id,
+    );
   }
 
   return (
