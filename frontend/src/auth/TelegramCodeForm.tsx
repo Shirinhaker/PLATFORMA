@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import type { AccountType, SessionIdentity } from "../api/types";
+import type { AccountType, Authenticated, SessionIdentity } from "../api/types";
 import type { AuthApi } from "./AuthFlow";
 import { openTelegramLink, refreshPendingAuth } from "./auth-pending";
 
@@ -43,6 +43,8 @@ export function TelegramCodeForm({
   const [countdown, setCountdown] = useState(resendAfter);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [verified, setVerified] = useState<Authenticated | null>(null);
+  const inFlight = useRef(false);
   const [credentials, setCredentials] = useState<Credentials | null>(null);
 
   useEffect(() => {
@@ -55,10 +57,12 @@ export function TelegramCodeForm({
 
   async function verify(event: React.FormEvent) {
     event.preventDefault();
-    if (!/^\d{6}$/.test(code)) {
+    if (inFlight.current) return;
+    if (!verified && !/^\d{6}$/.test(code)) {
       setError("6 xonali kodni kiriting.");
       return;
     }
+    inFlight.current = true;
     setBusy(true);
     setError("");
     try {
@@ -67,11 +71,15 @@ export function TelegramCodeForm({
         code,
         device_name: navigator.userAgent.slice(0, 100),
       };
-      const result =
-        purpose === "register"
-          ? await api.verifyRegistration(body)
-          : await api.verifyLogin(body);
-      onVerified?.();
+      let result = verified;
+      if (!result) {
+        result =
+          purpose === "register"
+            ? await api.verifyRegistration(body)
+            : await api.verifyLogin(body);
+        setVerified(result);
+        onVerified?.();
+      }
       const identity = await api.getSession();
       if (purpose === "register") {
         if (!result.login || !result.password) {
@@ -89,21 +97,26 @@ export function TelegramCodeForm({
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
 
   async function resend() {
+    if (inFlight.current || verified) return;
+    inFlight.current = true;
     setBusy(true);
     setError("");
     try {
       const result = await api.resendChallenge(requestId);
       refreshPendingAuth(result);
+      setCode("");
       setCountdown(result.resend_after);
       openTelegramLink(deepLink);
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
@@ -169,6 +182,7 @@ export function TelegramCodeForm({
             maxLength={6}
             placeholder="000000"
             required
+            disabled={busy || Boolean(verified)}
             value={code}
             onChange={(event) =>
               setCode(event.currentTarget.value.replace(/\D/g, "").slice(0, 6))
@@ -183,11 +197,18 @@ export function TelegramCodeForm({
         <button
           className="btn btn-primary btn-block"
           type="submit"
-          disabled={busy || code.length !== 6}
+          disabled={busy || (!verified && code.length !== 6)}
         >
-          {busy ? "Tekshirilmoqda..." : "Tasdiqlash va kirish"}
+          {busy
+            ? "Tekshirilmoqda..."
+            : verified
+              ? "Kirishni davom ettirish"
+              : "Tasdiqlash va kirish"}
         </button>
-        {deepLink ? (
+        {verified ? (
+          <p role="status">Kod tasdiqlandi. Kirishni davom ettiring.</p>
+        ) : null}
+        {deepLink && !verified ? (
           <button
             className="btn btn-soft btn-block"
             type="button"
@@ -199,12 +220,12 @@ export function TelegramCodeForm({
         <button
           className="btn btn-outline btn-block"
           type="button"
-          disabled={busy || countdown > 0}
+          disabled={busy || Boolean(verified) || countdown > 0}
           onClick={resend}
         >
           {countdown > 0 ? `${resendLabel} (${countdown})` : resendLabel}
         </button>
-        {onBack ? (
+        {onBack && !busy && !verified ? (
           purpose === "login" ? (
             <p className="form-foot">
               <button className="form-foot__action" type="button" onClick={onBack}>
