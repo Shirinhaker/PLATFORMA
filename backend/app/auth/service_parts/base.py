@@ -13,7 +13,7 @@ from app.accounts.model import AccountType
 from app.accounts.repository import (
     find_account_by_login,
 )
-from app.auth.model import AuthChallenge
+from app.auth.model import AuthChallenge, PendingRegistration
 from app.auth.repository import (
     lock_challenge,
 )
@@ -138,6 +138,22 @@ class AuthServiceBase:
         session: AsyncSession,
         challenge: AuthChallenge,
     ) -> None:
+        if challenge.purpose == "register":
+            pending = await session.get(
+                PendingRegistration,
+                challenge.pending_registration_id,
+                with_for_update=True,
+            )
+            assert challenge.code_sent_at is not None
+            assert challenge.code_expires_at is not None
+            if (
+                pending is None
+                or pending.verified_at is not None
+                or pending.expires_at <= challenge.code_sent_at
+            ):
+                raise INVALID_CODE
+            # Yangi kod amal qilayotganida forma eskirib qolmasin.
+            pending.expires_at = max(pending.expires_at, challenge.code_expires_at)
         await enqueue_event(
             session,
             "telegram.auth_code.send",

@@ -132,7 +132,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 
 | Modul | URL prefiksi | Qator | Nima qiladi |
 |---|---|---|---|
-| `auth` | `/api/v1/auth` | 2 367 | Telegram auth, sessiya, xavfsizlik, shared login |
+| `auth` | `/api/v1/auth` | 2 383 | Telegram auth, sessiya, xavfsizlik, shared login |
 | `accounts` | — | 128 | account modeli (router yo'q) |
 | `profiles` | `/api/v1` | 1 205 | foydalanuvchi/biznes profillari |
 | `account_settings` | `/api/v1/account-settings` | 266 | sozlamalar |
@@ -222,7 +222,7 @@ Domen papkalari va hajmi:
 | `api` | 6 467 | `listings` | 2 860 |
 | `admin` | 3 848 | `taxi` | 2 703 |
 | `app` | 3 917 | `queues` | 1 802 |
-| `auth` | 1 623 | `education` | 4 069 |
+| `auth` | 1 738 | `education` | 4 069 |
 | `documents` | 2 080 | `messages` | 1 451 |
 | qolganlari | har biri < 1 000 | | |
 
