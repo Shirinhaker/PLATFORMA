@@ -3,17 +3,19 @@ import {
   useCallback,
   useEffect,
   useRef,
+  useLayoutEffect,
+  type RefObject,
   useState,
 } from "react";
 
 import type { ApiClient } from "../../api/client";
 import type {
   PublicDistrictOffer,
-  PublicFollowedProfile,
-  PublicHomeMapResponse,
   PublicSearchItem,
   StoryGroup,
 } from "../../api/types";
+import { useHomeDiscovery } from "./home/use-home-discovery";
+import type { HomeSearchMemory } from "./home/home-search-memory";
 import { AppToast } from "./AppToast";
 import { HomeAdvertisements } from "./HomeAdvertisements";
 import { HomeDistrictOffers } from "./home/HomeDistrictOffers";
@@ -22,13 +24,11 @@ import { HomeMap } from "./home/HomeMap";
 import { HomeSearchResults } from "./home/HomeSearchResults";
 import { findLocationCenter } from "./location-centers";
 import type { HomeLocation } from "./location-storage";
-import {
-  StoryFeed,
-  type StoryViewerApi,
-} from "../../stories/StoryFeed";
-
+import { StoryFeed, type StoryViewerApi } from "../../stories/StoryFeed";
 
 interface HomeScreenProps {
+  onSearchStateChange?(): void;
+  searchMemory?: RefObject<HomeSearchMemory | null>;
   authenticated?: boolean;
   currentDistrict?: string;
   getAdvertisements?: ApiClient["getAdvertisements"];
@@ -53,10 +53,7 @@ interface HomeScreenProps {
   onTaxiCall?: () => void;
 }
 
-
-const EMPTY_MAP: PublicHomeMapResponse = { businesses: [], specialists: [] };
 const noopResult = () => undefined;
-
 
 function SearchIcon() {
   return (
@@ -67,7 +64,6 @@ function SearchIcon() {
   );
 }
 
-
 function CatalogIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
@@ -77,8 +73,9 @@ function CatalogIcon() {
   );
 }
 
-
 export function HomeScreen({
+  searchMemory,
+  onSearchStateChange,
   authenticated = false,
   currentDistrict,
   getAdvertisements,
@@ -98,135 +95,113 @@ export function HomeScreen({
   taxiEnabled = false,
   onTaxiCall,
 }: HomeScreenProps) {
-  const [query, setQuery] = useState("");
+  const saved =
+    searchMemory?.current?.district === (currentDistrict?.trim() || "")
+      ? searchMemory.current
+      : null;
+  const root = useRef<HTMLElement>(null);
+  const [query, setQuery] = useState(saved?.query ?? "");
   const [searchFocused, setSearchFocused] = useState(false);
-  const [homeMap, setHomeMap] = useState<PublicHomeMapResponse>(EMPTY_MAP);
-  const [followedProfiles, setFollowedProfiles] = useState<PublicFollowedProfile[]>([]);
-  const [offers, setOffers] = useState<PublicDistrictOffer[]>([]);
-  const [offersNeedDistrict, setOffersNeedDistrict] = useState(!currentDistrict);
-  const [results, setResults] = useState<PublicSearchItem[] | null>(null);
-  const [resultQuery, setResultQuery] = useState("");
+  const [results, setResults] = useState<PublicSearchItem[] | null>(
+    saved?.results ?? null,
+  );
+  const [resultQuery, setResultQuery] = useState(saved?.resultQuery ?? "");
   const [searchError, setSearchError] = useState("");
   const [searchPending, setSearchPending] = useState(false);
-  const [searchPage, setSearchPage] = useState(1);
-  const [searchPages, setSearchPages] = useState(0);
+  const [searchPage, setSearchPage] = useState(saved?.searchPage ?? 1);
+  const [searchPages, setSearchPages] = useState(saved?.searchPages ?? 0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const queryInput = useRef<HTMLInputElement>(null);
   const searchSequence = useRef(0);
   const district = currentDistrict?.trim() || "";
   const districtLabel = district || "Hudud tanlanmagan";
-  const locationCenter = (
-    location?.latitude != null
-    && location.longitude != null
-  ) ? {
-      latitude: location.latitude,
-      longitude: location.longitude,
-    } : findLocationCenter(location?.region || "", location?.district || "");
+  const locationCenter =
+    location?.latitude != null && location.longitude != null
+      ? {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }
+      : findLocationCenter(location?.region || "", location?.district || "");
   const loadStories = useCallback(() => {
     if (!storyApi) return Promise.resolve([]);
     return storyApi.getStoryFeed({
-      ...(locationCenter?.latitude === undefined ? {} : { lat: locationCenter.latitude }),
-      ...(locationCenter?.longitude === undefined ? {} : { lng: locationCenter.longitude }),
+      ...(locationCenter?.latitude === undefined
+        ? {}
+        : { lat: locationCenter.latitude }),
+      ...(locationCenter?.longitude === undefined
+        ? {}
+        : { lng: locationCenter.longitude }),
     });
   }, [locationCenter?.latitude, locationCenter?.longitude, storyApi]);
 
+  const { homeMap, offers, followedProfiles, offersNeedDistrict, failures } =
+    useHomeDiscovery({
+      district,
+      authenticated,
+      getHomeMap,
+      getDistrictOffers,
+      getFollowedProfiles,
+    });
+  useLayoutEffect(() => {
+    const scroller = root.current?.closest(".app-shell__content");
+    if (scroller && saved) scroller.scrollTop = saved.scrollTop;
+  }, []);
   useEffect(() => {
-    let active = true;
-    if (!district || !getHomeMap) {
-      setHomeMap(EMPTY_MAP);
-      return () => {
-        active = false;
+    if (searchMemory)
+      searchMemory.current = {
+        district,
+        query,
+        results,
+        resultQuery,
+        searchPage,
+        searchPages,
+        scrollTop: searchMemory.current?.scrollTop ?? 0,
       };
-    }
-    getHomeMap({ district })
-      .then((payload) => {
-        if (active) setHomeMap(payload);
-      })
-      .catch(() => {
-        if (active) setHomeMap(EMPTY_MAP);
-      });
-    return () => {
-      active = false;
-    };
-  }, [district, getHomeMap]);
+    onResultsActiveChange?.(results !== null);
+    onSearchStateChange?.();
+  }, [
+    district,
+    query,
+    results,
+    resultQuery,
+    searchPage,
+    searchPages,
+    searchMemory,
+    onResultsActiveChange,
+    onSearchStateChange,
+  ]);
 
-  useEffect(() => {
-    let active = true;
-    if (!district) {
-      setOffers([]);
-      setOffersNeedDistrict(true);
-      return () => {
-        active = false;
-      };
-    }
-    if (!getDistrictOffers) {
-      setOffers([]);
-      setOffersNeedDistrict(false);
-      return () => {
-        active = false;
-      };
-    }
-    getDistrictOffers({ district })
-      .then((payload) => {
-        if (!active) return;
-        setOffers(payload.items);
-        setOffersNeedDistrict(payload.needs_district);
-      })
-      .catch(() => {
-        if (active) {
-          setOffers([]);
-          setOffersNeedDistrict(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [district, getDistrictOffers]);
+  const openResult = useCallback(
+    (
+      kind: "user" | "business" | "product" | "service" | "listing",
+      publicId: string,
+      ownerPublicId?: string,
+    ) => {
+      if (searchMemory?.current) {
+        searchMemory.current.scrollTop =
+          root.current?.closest(".app-shell__content")?.scrollTop ?? 0;
+      }
+      if (ownerPublicId) {
+        onOpenPublicResult(kind, publicId, ownerPublicId);
+        return;
+      }
+      onOpenPublicResult(kind, publicId);
+    },
+    [onOpenPublicResult, searchMemory],
+  );
 
-  useEffect(() => {
-    let active = true;
-    if (!authenticated || !getFollowedProfiles) {
-      setFollowedProfiles([]);
-      return () => {
-        active = false;
-      };
-    }
-    getFollowedProfiles()
-      .then((items) => {
-        if (active) setFollowedProfiles(items);
-      })
-      .catch(() => {
-        if (active) setFollowedProfiles([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, [authenticated, getFollowedProfiles]);
-
-  const openResult = useCallback((
-    kind: "user" | "business" | "product" | "service" | "listing",
-    publicId: string,
-    ownerPublicId?: string,
-  ) => {
-    if (ownerPublicId) {
-      onOpenPublicResult(kind, publicId, ownerPublicId);
-      return;
-    }
-    onOpenPublicResult(kind, publicId);
-  }, [onOpenPublicResult]);
-
-  const renderFollowedProfiles = useCallback((
-    groups: StoryGroup[],
-    onOpenStory: (index: number) => void,
-  ) => (
-    <HomeFollowedProfiles
-      items={followedProfiles}
-      storyGroups={groups}
-      onOpenProfile={openResult}
-      onOpenStory={onOpenStory}
-    />
-  ), [followedProfiles, openResult]);
+  const renderFollowedProfiles = useCallback(
+    (groups: StoryGroup[], onOpenStory: (index: number) => void) => (
+      <HomeFollowedProfiles
+        items={followedProfiles}
+        storyGroups={groups}
+        onOpenProfile={openResult}
+        onOpenStory={onOpenStory}
+      />
+    ),
+    [followedProfiles, openResult],
+  );
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -248,36 +223,31 @@ export function HomeScreen({
     setSearchPages(0);
     setLoadingMore(false);
     setToastMessage("");
-    onResultsActiveChange?.(true);
     void searchPublic({
       q: normalizedQuery,
       region: location?.region || "",
       district: location?.district || "",
       page: 1,
       page_size: 20,
-    }).then((payload) => {
-      if (requestSequence !== searchSequence.current) return;
-      setResults(payload.items);
-      setSearchPage(payload.page);
-      setSearchPages(payload.pages);
-      setSearchPending(false);
-    }).catch((error: unknown) => {
-      if (requestSequence !== searchSequence.current) return;
-      setResults([]);
-      setSearchPending(false);
-      setSearchError(
-        error instanceof Error ? error.message : String(error || ""),
-      );
-    });
+    })
+      .then((payload) => {
+        if (requestSequence !== searchSequence.current) return;
+        setResults(payload.items);
+        setSearchPage(payload.page);
+        setSearchPages(payload.pages);
+        setSearchPending(false);
+      })
+      .catch((error: unknown) => {
+        if (requestSequence !== searchSequence.current) return;
+        setResults([]);
+        setSearchPending(false);
+        setSearchError(error instanceof Error ? error.message : String(error || ""));
+      });
   }
 
   function loadMore() {
-    if (
-      !searchPublic
-      || loadingMore
-      || searchPending
-      || searchPage >= searchPages
-    ) return;
+    if (!searchPublic || loadingMore || searchPending || searchPage >= searchPages)
+      return;
     const requestSequence = searchSequence.current;
     const nextPage = searchPage + 1;
     setLoadingMore(true);
@@ -287,27 +257,30 @@ export function HomeScreen({
       district: location?.district || "",
       page: nextPage,
       page_size: 20,
-    }).then((payload) => {
-      if (requestSequence !== searchSequence.current) return;
-      setResults((current) => {
-        const merged = [...(current || []), ...payload.items];
-        return merged.filter((item, index) => (
-          merged.findIndex((candidate) => (
-            candidate.kind === item.kind
-            && candidate.public_id === item.public_id
-          )) === index
-        ));
+    })
+      .then((payload) => {
+        if (requestSequence !== searchSequence.current) return;
+        setResults((current) => {
+          const merged = [...(current || []), ...payload.items];
+          return merged.filter(
+            (item, index) =>
+              merged.findIndex(
+                (candidate) =>
+                  candidate.kind === item.kind &&
+                  candidate.public_id === item.public_id,
+              ) === index,
+          );
+        });
+        setSearchPage(payload.page);
+        setSearchPages(payload.pages);
+      })
+      .catch((error: unknown) => {
+        if (requestSequence !== searchSequence.current) return;
+        setToastMessage(error instanceof Error ? error.message : String(error || ""));
+      })
+      .finally(() => {
+        if (requestSequence === searchSequence.current) setLoadingMore(false);
       });
-      setSearchPage(payload.page);
-      setSearchPages(payload.pages);
-    }).catch((error: unknown) => {
-      if (requestSequence !== searchSequence.current) return;
-      setToastMessage(
-        error instanceof Error ? error.message : String(error || ""),
-      );
-    }).finally(() => {
-      if (requestSequence === searchSequence.current) setLoadingMore(false);
-    });
   }
 
   function clearQuery() {
@@ -327,7 +300,6 @@ export function HomeScreen({
     setSearchPages(0);
     setLoadingMore(false);
     setToastMessage("");
-    onResultsActiveChange?.(false);
   }
 
   function openOffer(item: PublicDistrictOffer) {
@@ -339,7 +311,15 @@ export function HomeScreen({
   }
 
   return (
-    <main className="screen active public-home-v1656" data-screen="home">
+    <main ref={root} className="screen active public-home-v1656" data-screen="home">
+      {failures.map(({ name, retry }) => (
+        <div className="public-search-status" role="alert" key={name}>
+          <p>{name} yuklanmadi. Internet aloqasini tekshiring.</p>
+          <button type="button" className="btn btn-soft" onClick={retry}>
+            Qayta urinish: {name}
+          </button>
+        </div>
+      ))}
       {storyApi ? (
         <StoryFeed
           deleteStory={storyApi.deleteStory}
@@ -351,15 +331,18 @@ export function HomeScreen({
           onOpenOwner={openResult}
         />
       ) : (
-        <HomeFollowedProfiles
-          items={followedProfiles}
-          onOpenProfile={openResult}
-        />
+        <HomeFollowedProfiles items={followedProfiles} onOpenProfile={openResult} />
       )}
 
       <div className="home-discovery" id="homeDiscovery">
-        <div className={`home-search-card${searchFocused ? " mobile-search-focused" : ""}`}>
-          <h1>Kerakli mahsulot va<br />xizmatni yaqiningizdan toping</h1>
+        <div
+          className={`home-search-card${searchFocused ? " mobile-search-focused" : ""}`}
+        >
+          <h1>
+            Kerakli mahsulot va
+            <br />
+            xizmatni yaqiningizdan toping
+          </h1>
           <form className="home-search-row" onSubmit={submitSearch}>
             <label className="home-query-shell" htmlFor="homeQueryInput">
               <SearchIcon />
@@ -394,9 +377,13 @@ export function HomeScreen({
                 <strong>Katalog bo‘yicha</strong>
                 <small id="homeCatalogLocation">{districtLabel}</small>
               </span>
-              <span className="home-catalog-chevron" aria-hidden="true">⌄</span>
+              <span className="home-catalog-chevron" aria-hidden="true">
+                ⌄
+              </span>
             </button>
-            <button className="home-search-submit" type="submit">Qidirish</button>
+            <button className="home-search-submit" type="submit">
+              Qidirish
+            </button>
           </form>
           <div className="home-location-note" id="homeLocationNote">
             Joriy hudud: {district ? <b>{district}</b> : "tanlanmagan"}
@@ -430,11 +417,9 @@ export function HomeScreen({
               pending={searchPending}
               query={resultQuery}
               onLoadMore={loadMore}
-              onOpenResult={(item) => openResult(
-                item.kind,
-                item.public_id,
-                item.owner_public_id,
-              )}
+              onOpenResult={(item) =>
+                openResult(item.kind, item.public_id, item.owner_public_id)
+              }
             />
           </div>
         </div>

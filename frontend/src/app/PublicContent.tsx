@@ -1,3 +1,6 @@
+import type { AuthIntent } from "./auth-intent";
+import type { RefObject } from "react";
+import type { HomeSearchMemory } from "../legacy/public/home/home-search-memory";
 import type { ComponentProps, Dispatch, ReactNode, SetStateAction } from "react";
 
 import type { PublicFeatures } from "../api/types";
@@ -39,6 +42,9 @@ type ListingsProps = ComponentProps<typeof PublicListings>;
 type CartProps = ComponentProps<typeof Cart>;
 
 type PublicContentProps = {
+  searchMemory: RefObject<HomeSearchMemory | null>;
+  homeRevision: number;
+  onSearchStateChange(): void;
   api: AppApi;
   session: AppSession;
   navigation: PublicNavigationState;
@@ -75,7 +81,7 @@ type PublicContentProps = {
   setCartFilter: Dispatch<SetStateAction<string | null>>;
   setHomeLocation: Dispatch<SetStateAction<HomeLocation | null>>;
   setHomeSearchResultsActive: Dispatch<SetStateAction<boolean>>;
-  openAuth(reason?: string): void;
+  openAuth(reason?: string, intent?: AuthIntent): void;
   openQueueBooking: ProfileProps["onBookQueue"];
   openCourseEnrollment: ProfileProps["onEnrollCourse"];
   openPublicResult: HomeProps["onOpenPublicResult"];
@@ -85,6 +91,9 @@ type PublicContentProps = {
 };
 
 export function PublicContent({
+  searchMemory,
+  homeRevision,
+  onSearchStateChange,
   api,
   session,
   navigation,
@@ -127,7 +136,27 @@ export function PublicContent({
   updateOpenedListingTitle,
   updateOpenedProfileTitle,
 }: PublicContentProps) {
-  if (navigation.view === "home" && openedChat && supportsMessages(api)) {
+  const openChat =
+    publicFeatures.chat && supportsMessages(api)
+      ? (kind: "user" | "business", publicId: string, name: string) => {
+          const peer = { kind, publicId, name };
+          if (!authenticated) {
+            openAuth("Xabar yozish", { chat: peer });
+            return;
+          }
+          setOpenedChat(peer);
+          dispatch({ type: "GO_HOME" });
+        }
+      : undefined;
+  const catalogChat = openChat
+    ? (publicId: string, name: string) => openChat("business", publicId, name)
+    : undefined;
+  if (
+    navigation.view === "home" &&
+    openedChat &&
+    authenticated &&
+    supportsMessages(api)
+  ) {
     return (
       <Messages
         api={api}
@@ -172,15 +201,10 @@ export function PublicContent({
         onBookQueue={openQueueBooking}
         onEnrollCourse={openCourseEnrollment}
         onNeedLogin={() => openAuth()}
-        onMessage={
-          publicFeatures.chat && supportsMessages(api)
-            ? (kind, publicId, name) => {
-                setOpenedChat({ kind, publicId, name });
-              }
-            : undefined
-        }
-        onNeedCourseLogin={() => openAuth("Kursga yozilish")}
-        onNeedQueueLogin={() => openAuth("Navbat olish")}
+        onMessage={openChat}
+        onNeedMessageLogin={openChat}
+        onNeedCourseLogin={(target) => openAuth("Kursga yozilish", { course: target })}
+        onNeedQueueLogin={(target) => openAuth("Navbat olish", { queue: target })}
         onOpenCart={() => {
           setCartFilter(openedProfile.publicId);
           dispatch({ type: "OPEN_CART" });
@@ -207,7 +231,8 @@ export function PublicContent({
           searchPublic={searchPublic}
           getCatalogItems={getCatalogItems}
           onBookQueue={openQueueBooking}
-          onNeedQueueLogin={() => openAuth("Navbat olish")}
+          onNeedQueueLogin={(target) => openAuth("Navbat olish", { queue: target })}
+          onOpenChat={catalogChat}
           onOpenOwner={(publicId) => {
             setOpenedProfile({ kind: "business", publicId, title: "Profil" });
             dispatch({ type: "GO_HOME" });
@@ -226,7 +251,8 @@ export function PublicContent({
           searchPublic={searchPublic}
           getCatalogItems={getCatalogItems}
           onBookQueue={openQueueBooking}
-          onNeedQueueLogin={() => openAuth("Navbat olish")}
+          onNeedQueueLogin={(target) => openAuth("Navbat olish", { queue: target })}
+          onOpenChat={catalogChat}
           onOpenOwner={(publicId) => {
             setOpenedProfile({ kind: "business", publicId, title: "Profil" });
             dispatch({ type: "GO_HOME" });
@@ -302,6 +328,9 @@ export function PublicContent({
     case "home":
       return (
         <HomeScreen
+          key={homeRevision}
+          searchMemory={searchMemory}
+          onSearchStateChange={onSearchStateChange}
           authenticated={authenticated}
           currentDistrict={homeLocation?.district}
           getAdvertisements={getAdvertisements}

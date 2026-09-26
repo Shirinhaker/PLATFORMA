@@ -52,6 +52,7 @@ type AppFrameProps = {
   setCartFilter: Dispatch<SetStateAction<string | null>>;
   setCourseEnrollment: Dispatch<SetStateAction<CourseEnrollmentTarget | null>>;
   setQueueBooking: Dispatch<SetStateAction<QueueBookingTarget | null>>;
+  onNavigateBack?(): boolean;
   onHome(): void;
   onClearAuthReason(): void;
   onOpenAuth(reason?: string): void;
@@ -88,6 +89,7 @@ export function AppFrame({
   setCartFilter,
   setCourseEnrollment,
   setQueueBooking,
+  onNavigateBack,
   onHome,
   onClearAuthReason,
   onOpenAuth,
@@ -103,6 +105,7 @@ export function AppFrame({
 
   return (
     <AppShell
+      showBack={navigation.view !== "location" || Boolean(homeLocation)}
       authenticated={authenticated}
       title={
         (openedChat || openedProfile || openedListing) &&
@@ -130,6 +133,7 @@ export function AppFrame({
         dispatch({ type: authenticated ? "OPEN_CABINET" : "OPEN_AUTH" });
       }}
       onBack={() => {
+        if (onNavigateBack?.()) return;
         if (courseEnrollment) {
           setCourseEnrollment(null);
         } else if (navigation.view === "cart") {
@@ -173,7 +177,7 @@ export function AppFrame({
             content
           )}
         </div>
-        {queueBooking && supportsQueueBookingApi(api) ? (
+        {session.status === "user" && queueBooking && supportsQueueBookingApi(api) ? (
           <QueueBooking
             api={api}
             key={`${queueBooking.businessPublicId}:${queueBooking.itemPublicId}`}
@@ -182,7 +186,9 @@ export function AppFrame({
             onMessage={onMessage}
           />
         ) : null}
-        {courseEnrollment && typeof api.createCourseEnrollment === "function" ? (
+        {session.status === "user" &&
+        courseEnrollment &&
+        typeof api.createCourseEnrollment === "function" ? (
           <CourseEnrollment
             api={api as CourseEnrollmentApi}
             customerPhone={session.status === "user" ? orderCustomer.phone : ""}

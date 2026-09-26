@@ -5,7 +5,8 @@ export interface CatalogItemCardProps {
   item: PublicCatalogItem;
   authenticated?: boolean;
   onOpenOwner?(publicId: string): void;
-  onNeedQueueLogin?(): void;
+  onNeedQueueLogin?(target: QueueBookingTarget): void;
+  onOpenChat?(publicId: string, name: string): void;
   onBookQueue?(target: QueueBookingTarget): void;
   onQueueMessage?(message: string): void;
 }
@@ -15,6 +16,7 @@ export function CatalogItemActions({
   authenticated = false,
   onOpenOwner,
   onNeedQueueLogin,
+  onOpenChat,
   onBookQueue,
   onQueueMessage,
   showChat = true,
@@ -42,7 +44,7 @@ export function CatalogItemActions({
               return;
             }
             if (!authenticated) {
-              onNeedQueueLogin?.();
+              onNeedQueueLogin?.({ businessPublicId: item.owner_public_id, itemPublicId: item.public_id, serviceName: item.name || "Xizmat", direction: item.direction });
               return;
             }
             onBookQueue?.({
@@ -59,7 +61,8 @@ export function CatalogItemActions({
         {orderLabel}
       </button>
       {showChat ? (
-        <button type="button" disabled={!item.can_chat}>
+        <button type="button" disabled={!item.can_chat || !onOpenChat}
+          onClick={() => onOpenChat?.(item.owner_public_id, item.owner_name || item.owner_label || "Biznes")}>
           Chat
         </button>
       ) : null}

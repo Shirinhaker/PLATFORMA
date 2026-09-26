@@ -7,6 +7,7 @@ export interface PublicNavigationState {
 }
 
 export type PublicNavigationAction =
+  | { type: "RESTORE"; state: PublicNavigationState }
   | { type: "OPEN_CATALOG"; query: string }
   | { type: "OPEN_CATEGORY"; categoryId: string }
   | { type: "OPEN_LISTINGS" }
@@ -30,6 +31,8 @@ export function publicNavigationReducer(
   action: PublicNavigationAction,
 ): PublicNavigationState {
   switch (action.type) {
+    case "RESTORE":
+      return action.state;
     case "OPEN_CATALOG":
       return {
         view: "catalog",

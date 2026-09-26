@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useReducer, useState } from "react";
 
 import type { PublicFeatures, SessionIdentity } from "../api/types";
 import type { AppSession } from "../auth/types";
 import type { CourseEnrollmentTarget } from "../education/CourseEnrollment";
-import type { CartState } from "../orders/order-store";
+import { usePersistentCart } from "../orders/use-persistent-cart";
+import {
+  useNavigationHistory,
+  type NavigationSnapshot,
+} from "./use-navigation-history";
+import { usePublicApi } from "./use-public-api";
 import { readHomeLocation, type HomeLocation } from "../legacy/public/location-storage";
 import {
   initialPublicNavigationState,
@@ -14,6 +19,8 @@ import {
   supportsQueueBookingApi,
   type QueueBookingTarget,
 } from "../queues/QueueBooking";
+import type { HomeSearchMemory } from "../legacy/public/home/home-search-memory";
+import type { AuthIntent } from "./auth-intent";
 import type { MessagePeer } from "../messages/Messages";
 import { useOrderCustomerProfile } from "./use-order-customer-profile";
 import { AccountContent } from "./AccountContent";
@@ -31,12 +38,15 @@ export function App({ api }: { api: AppApi }) {
   }, []);
   const [session, setSession] = useState<AppSession>({ status: "loading" });
   const [failed, setFailed] = useState(false);
+  const searchMemory = useRef<HomeSearchMemory | null>(null);
+  const [, refreshSearchSnapshot] = useReducer((value: number) => value + 1, 0);
+  const [homeRevision, setHomeRevision] = useState(0);
   const [homeSearchResultsActive, setHomeSearchResultsActive] = useState(false);
   const [openedProfile, setOpenedProfile] = useState<OpenedProfile | null>(null);
   const [openedItemId, setOpenedItemId] = useState<string | null>(null);
   const [openedListing, setOpenedListing] = useState<OpenedListing | null>(null);
   const [openedChat, setOpenedChat] = useState<MessagePeer | null>(null);
-  const [carts, setCarts] = useState<CartState>({});
+  const [carts, setCarts] = usePersistentCart(session);
   const [cartFilter, setCartFilter] = useState<string | null>(null);
   const orderCustomer = useOrderCustomerProfile(api, session);
   const [queueBooking, setQueueBooking] = useState<QueueBookingTarget | null>(null);
@@ -64,50 +74,21 @@ export function App({ api }: { api: AppApi }) {
     systemization: false,
     taxi: false,
   });
-  const searchPublic = useMemo(
-    () =>
-      typeof api.searchPublic === "function" ? api.searchPublic.bind(api) : undefined,
-    [api],
-  );
-  const getCatalogItems = useMemo(
-    () =>
-      typeof api.getCatalogItems === "function"
-        ? api.getCatalogItems.bind(api)
-        : undefined,
-    [api],
-  );
-  const getAdvertisements = useMemo(
-    () =>
-      typeof api.getAdvertisements === "function"
-        ? api.getAdvertisements.bind(api)
-        : undefined,
-    [api],
-  );
-  const getHomeMap = useMemo(
-    () => (typeof api.getHomeMap === "function" ? api.getHomeMap.bind(api) : undefined),
-    [api],
-  );
-  const getDistrictOffers = useMemo(
-    () =>
-      typeof api.getDistrictOffers === "function"
-        ? api.getDistrictOffers.bind(api)
-        : undefined,
-    [api],
-  );
-  const getFollowedProfiles = useMemo(
-    () =>
-      typeof api.getFollowedProfiles === "function"
-        ? api.getFollowedProfiles.bind(api)
-        : undefined,
-    [api],
-  );
-  const getPublicProfile = useMemo(
-    () =>
-      typeof api.getPublicProfile === "function"
-        ? api.getPublicProfile.bind(api)
-        : undefined,
-    [api],
-  );
+  const {
+    searchPublic,
+    getCatalogItems,
+    getAdvertisements,
+    getHomeMap,
+    getDistrictOffers,
+    getFollowedProfiles,
+    getPublicProfile,
+    recordAdvertisementViews,
+    recordAdvertisementClick,
+    getPublicListing,
+    createOrder,
+    listingApi,
+    storyApi,
+  } = usePublicApi(api);
   useEffect(() => {
     if (!sharedUserId || !getPublicProfile) return;
     setOpenedListing(null);
@@ -118,69 +99,6 @@ export function App({ api }: { api: AppApi }) {
     });
     dispatch({ type: "GO_HOME" });
   }, [getPublicProfile, sharedUserId]);
-  const recordAdvertisementViews = useMemo(
-    () =>
-      typeof api.recordAdvertisementViews === "function"
-        ? api.recordAdvertisementViews.bind(api)
-        : undefined,
-    [api],
-  );
-  const recordAdvertisementClick = useMemo(
-    () =>
-      typeof api.recordAdvertisementClick === "function"
-        ? api.recordAdvertisementClick.bind(api)
-        : undefined,
-    [api],
-  );
-  const getPublicListing = useMemo(
-    () =>
-      typeof api.getPublicListing === "function"
-        ? api.getPublicListing.bind(api)
-        : undefined,
-    [api],
-  );
-  const createOrder = useMemo(
-    () =>
-      typeof api.createOrder === "function"
-        ? api.createOrder.bind(api)
-        : async () => {
-            throw new Error("Buyurtma xizmati hozircha ulanmagan.");
-          },
-    [api],
-  );
-  const listingApi = useMemo(
-    () =>
-      typeof api.getListingCounts === "function" &&
-      typeof api.getPublicListings === "function" &&
-      typeof api.toggleListingSave === "function"
-        ? {
-            getListingCounts: api.getListingCounts.bind(api),
-            getPublicListings: api.getPublicListings.bind(api),
-            toggleListingSave: api.toggleListingSave.bind(api),
-          }
-        : undefined,
-    [api],
-  );
-  const storyApi = useMemo(
-    () =>
-      typeof api.getStoryFeed === "function" &&
-      typeof api.getOwnerStories === "function" &&
-      typeof api.recordStoryView === "function" &&
-      typeof api.getStoryViewers === "function" &&
-      typeof api.deleteStory === "function" &&
-      typeof api.reportStory === "function"
-        ? {
-            getStoryFeed: api.getStoryFeed.bind(api),
-            getOwnerStories: api.getOwnerStories.bind(api),
-            recordStoryView: api.recordStoryView.bind(api),
-            getStoryViewers: api.getStoryViewers.bind(api),
-            deleteStory: api.deleteStory.bind(api),
-            reportStory: api.reportStory.bind(api),
-          }
-        : undefined,
-    [api],
-  );
-
   useEffect(() => {
     if (typeof api.getPublicFeatures !== "function") return undefined;
     let active = true;
@@ -237,6 +155,9 @@ export function App({ api }: { api: AppApi }) {
   const title = appTitle(navigation);
 
   function openHome() {
+    searchMemory.current = null;
+    setHomeRevision((value) => value + 1);
+    setHomeSearchResultsActive(false);
     setOpenedItemId(null);
     setOpenedProfile(null);
     setOpenedListing(null);
@@ -245,6 +166,7 @@ export function App({ api }: { api: AppApi }) {
     setQueueBooking(null);
     setCourseEnrollment(null);
     setAuthReason("");
+    authReturn.current = null;
     dispatch({ type: homeLocation ? "GO_HOME" : "OPEN_LOCATION" });
   }
 
@@ -295,15 +217,53 @@ export function App({ api }: { api: AppApi }) {
     setQueueMessage((current) => ({ id: current.id + 1, text }));
   }, []);
 
-  const openAuth = useCallback((reason = "") => {
+  const snapshot: NavigationSnapshot = {
+    homeSearch: searchMemory.current,
+    navigation,
+    openedProfile,
+    openedListing,
+    openedChat,
+    openedItemId,
+    cartFilter,
+    queueBooking,
+    courseEnrollment,
+  };
+  const authReturn = useRef<{ state: NavigationSnapshot; intent?: AuthIntent } | null>(
+    null,
+  );
+  function restoreNavigation(state: NavigationSnapshot) {
+    searchMemory.current = state.homeSearch;
+    setHomeRevision((value) => value + 1);
+    setHomeSearchResultsActive(Boolean(state.homeSearch?.results));
+    dispatch({ type: "RESTORE", state: state.navigation });
+    setOpenedProfile(state.openedProfile);
+    setOpenedListing(state.openedListing);
+    setOpenedChat(state.openedChat);
+    setOpenedItemId(state.openedItemId);
+    setCartFilter(state.cartFilter);
+    setQueueBooking(state.queueBooking);
+    setCourseEnrollment(state.courseEnrollment);
+  }
+  const navigateBack = useNavigationHistory(
+    snapshot,
+    restoreNavigation,
+    session.status === "loading"
+      ? null
+      : session.status === "guest"
+        ? "guest"
+        : `${session.status}:${session.identity.account_id}`,
+  );
+  const openAuth = (reason = "", intent?: AuthIntent) => {
+    authReturn.current = { state: { ...snapshot, openedItemId: null }, intent };
+    setOpenedItemId(null);
     setAuthReason(reason);
     dispatch({ type: "OPEN_AUTH" });
-  }, []);
+  };
 
   const openQueueBooking = useCallback(
     (target: QueueBookingTarget) => {
       if (session.status === "guest") {
-        openAuth("Navbat olish");
+        openAuth("Navbat olish", { queue: target });
         return;
       }
       if (session.status !== "user") {
@@ -322,7 +282,7 @@ export function App({ api }: { api: AppApi }) {
   const openCourseEnrollment = useCallback(
     (target: CourseEnrollmentTarget) => {
       if (session.status === "guest") {
-        openAuth("Kursga yozilish");
+        openAuth("Kursga yozilish", { course: target });
         return;
       }
       if (session.status !== "user") {
@@ -349,7 +309,31 @@ export function App({ api }: { api: AppApi }) {
   function completeAuthentication(identity: SessionIdentity) {
     setAuthReason("");
     setSession({ status: identity.account_type, identity });
-    dispatch({ type: "OPEN_CABINET" });
+    const pending = authReturn.current;
+    authReturn.current = null;
+    if (!pending) {
+      dispatch({ type: "OPEN_CABINET" });
+      return;
+    }
+    restoreNavigation(pending.state);
+    if (pending.intent?.chat) {
+      setOpenedChat(pending.intent.chat);
+      dispatch({ type: "GO_HOME" });
+    }
+    if (pending.intent?.queue || pending.intent?.course) {
+      if (identity.account_type !== "user")
+        showQueueMessage("Avval oddiy profilga o'ting.");
+      else {
+        if (pending.intent.queue && supportsQueueBookingApi(api))
+          setQueueBooking(pending.intent.queue);
+        else if (pending.intent.queue)
+          showQueueMessage("Navbat xizmati hozircha ulanmagan.");
+        if (pending.intent.course && typeof api.createCourseEnrollment === "function")
+          setCourseEnrollment(pending.intent.course);
+        else if (pending.intent.course)
+          showQueueMessage("Kursga yozilish xizmati hozircha ulanmagan.");
+      }
+    }
   }
 
   function renderAccount() {
@@ -385,6 +369,9 @@ export function App({ api }: { api: AppApi }) {
   const publicContent = (
     <>
       <PublicContent
+        searchMemory={searchMemory}
+        onSearchStateChange={refreshSearchSnapshot}
+        homeRevision={homeRevision}
         api={api}
         session={session}
         navigation={navigation}
@@ -435,7 +422,7 @@ export function App({ api }: { api: AppApi }) {
           authenticated={authenticated}
           onClose={() => setOpenedItemId(null)}
           onOpenOwner={(publicId) => openPublicResult("business", publicId)}
-          onNeedQueueLogin={() => openAuth()}
+          onNeedQueueLogin={(target) => openAuth("Navbat olish", { queue: target })}
           onBookQueue={openQueueBooking}
           onQueueMessage={showQueueMessage}
         />
@@ -473,7 +460,11 @@ export function App({ api }: { api: AppApi }) {
       setCourseEnrollment={setCourseEnrollment}
       setQueueBooking={setQueueBooking}
       onHome={openHome}
-      onClearAuthReason={() => setAuthReason("")}
+      onClearAuthReason={() => {
+        setAuthReason("");
+        authReturn.current = null;
+      }}
+      onNavigateBack={navigateBack}
       onOpenAuth={openAuth}
       onMessage={showQueueMessage}
       onRetry={() => setAttempt((value) => value + 1)}
