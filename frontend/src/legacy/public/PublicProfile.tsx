@@ -29,10 +29,11 @@ interface PublicProfileProps {
   ): void;
   onNeedLogin?(): void;
   onMessage?(kind: "user" | "business", publicId: string, name: string): void;
-  onNeedQueueLogin?(): void;
+  onNeedQueueLogin?(target: QueueBookingTarget): void;
   onBookQueue?(target: QueueBookingTarget): void;
   onEnrollCourse?(target: CourseEnrollmentTarget): void;
-  onNeedCourseLogin?(): void;
+  onNeedCourseLogin?(target: CourseEnrollmentTarget): void;
+  onNeedMessageLogin?(kind: "user" | "business", publicId: string, name: string): void;
   onQueueMessage?(message: string): void;
   onOpenCart?(): void;
   onTitleChange?(title: string): void;
@@ -93,6 +94,7 @@ export function PublicProfile({
   onBookQueue,
   onEnrollCourse,
   onNeedCourseLogin,
+  onNeedMessageLogin,
   onQueueMessage,
   onOpenCart,
   onTitleChange,
@@ -181,7 +183,7 @@ export function PublicProfile({
           type="button"
           onClick={() => {
             if (!authenticated) {
-              (onNeedCourseLogin ?? onNeedLogin)?.();
+              (onNeedCourseLogin ?? onNeedLogin)?.({ itemPublicId: item.public_id, courseName: item.name || "Kurs" });
               return;
             }
             onEnrollCourse?.({
@@ -213,7 +215,7 @@ export function PublicProfile({
               return;
             }
             if (!authenticated) {
-              (onNeedQueueLogin ?? onNeedLogin)?.();
+              (onNeedQueueLogin ?? onNeedLogin)?.({ businessPublicId: providerPublicId, itemPublicId: item.public_id, serviceName: item.name || "Xizmat", direction: profileDirection });
               return;
             }
             onBookQueue?.({
@@ -309,7 +311,7 @@ export function PublicProfile({
             className="btn btn-block public-profile-message"
             onClick={() => {
               if (!authenticated) {
-                onNeedLogin?.();
+                (onNeedMessageLogin ?? onNeedLogin)?.(kind, publicId, profile.name);
                 return;
               }
               onMessage(kind, publicId, profile.name);

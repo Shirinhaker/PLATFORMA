@@ -1,4 +1,5 @@
 interface PublicHeaderProps {
+  showBack?: boolean;
   authenticated: boolean;
   cartCount?: number;
   features?: { listings: boolean; taxi: boolean };
@@ -77,6 +78,7 @@ function ThemeIcon({ theme }: { theme: "light" | "dark" }) {
 
 
 export function PublicHeader({
+  showBack = true,
   authenticated: _authenticated,
   cartCount = 0,
   features = { listings: false, taxi: false },
@@ -170,6 +172,7 @@ export function PublicHeader({
         </div>
       ) : (
         <div className="tb-sub" id="tbSub">
+          {showBack ? (
           <button
             aria-label="Orqaga"
             className="back-btn"
@@ -179,6 +182,7 @@ export function PublicHeader({
           >
             <BackIcon />
           </button>
+          ) : null}
           <div className="tb-title" id="tbTitle">{title || "Sahifa"}</div>
         </div>
       )}

@@ -25,7 +25,8 @@ interface CatalogScreenProps {
   authenticated?: boolean;
   onOpenCategory(categoryId: string): void;
   onOpenOwner?(publicId: string): void;
-  onNeedQueueLogin?(): void;
+  onNeedQueueLogin?(target: QueueBookingTarget): void;
+  onOpenChat?(publicId: string, name: string): void;
   onBookQueue?(target: QueueBookingTarget): void;
   onQueueMessage?(message: string): void;
 }
@@ -61,6 +62,7 @@ export function CatalogScreen({
   onOpenCategory,
   onOpenOwner,
   onNeedQueueLogin,
+  onOpenChat,
   onBookQueue,
   onQueueMessage,
 }: CatalogScreenProps) {
@@ -241,6 +243,7 @@ export function CatalogScreen({
                   key={item.public_id}
                   onBookQueue={onBookQueue}
                   onNeedQueueLogin={onNeedQueueLogin}
+                  onOpenChat={onOpenChat}
                   onOpenOwner={onOpenOwner}
                   onQueueMessage={onQueueMessage}
                 />

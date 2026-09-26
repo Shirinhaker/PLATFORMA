@@ -17,7 +17,8 @@ interface CategoryScreenProps {
   getCatalogItems?: ApiClient["getCatalogItems"];
   authenticated?: boolean;
   onOpenOwner?(publicId: string): void;
-  onNeedQueueLogin?(): void;
+  onNeedQueueLogin?(target: QueueBookingTarget): void;
+  onOpenChat?(publicId: string, name: string): void;
   onBookQueue?(target: QueueBookingTarget): void;
   onQueueMessage?(message: string): void;
 }
@@ -29,6 +30,7 @@ export function CategoryScreen({
   authenticated = false,
   onOpenOwner,
   onNeedQueueLogin,
+  onOpenChat,
   onBookQueue,
   onQueueMessage,
 }: CategoryScreenProps) {
@@ -149,6 +151,7 @@ export function CategoryScreen({
                   key={item.public_id}
                   onBookQueue={onBookQueue}
                   onNeedQueueLogin={onNeedQueueLogin}
+                  onOpenChat={onOpenChat}
                   onOpenOwner={onOpenOwner}
                   onQueueMessage={onQueueMessage}
                 />

@@ -5,6 +5,7 @@ import "../legacy/public/legacy-public.css";
 
 type AppShellProps = {
   children: ReactNode;
+  showBack?: boolean;
   authenticated: boolean;
   title?: string;
   isHome?: boolean;
@@ -27,6 +28,7 @@ type AppShellProps = {
 const noop = () => undefined;
 
 export function AppShell({
+  showBack = true,
   children,
   authenticated,
   title,
@@ -53,6 +55,7 @@ export function AppShell({
       className={`app-shell${isHome ? " home-active" : ""}${searchResultsActive ? " search-results-active" : ""}`}
     >
       <PublicHeader
+        showBack={showBack}
         authenticated={authenticated}
         cartCount={cartCount}
         features={publicFeatures}
