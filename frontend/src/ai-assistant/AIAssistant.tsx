@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { AIChatMessage } from "../api/types";
 import "./AIAssistant.css";
+import { AIDocuments, type AIDocumentsApi } from "./AIDocuments";
 
-export type AIAssistantApi = {
+export type AIAssistantApi = AIDocumentsApi & {
   getAIChatHistory(limit?: number): Promise<{ history: AIChatMessage[] }>;
   sendAIChatMessage(message: string): Promise<{ answer: string }>;
 };
@@ -88,6 +89,10 @@ export function AIAssistant({
         </button>
         <h1>AI yordamchi</h1>
       </header>
+      <details className="ai1656__document-panel">
+        <summary>📄 Hujjat yuklash yoki qoralama tayyorlash</summary>
+        <AIDocuments api={api} />
+      </details>
       <div className="ai1656__list" ref={listRef} aria-live="polite">
         {loading ? <p className="ai1656__muted idesc">Yuklanmoqda...</p> : null}
         {!loading && !messages.length ? (
