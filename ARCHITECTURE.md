@@ -160,7 +160,7 @@ Chapdagi jadval — "menga X kerak bo'lsa qaysi papkani ochaman" savoliga javob.
 | `documents` | `/api/v1/documents` | 1 252 | hujjatlar |
 | `education` | `/api/v1/education` | 6 053 | ta'lim markazlari ⚠️ (eng katta modul) |
 | `taxi` | `/api/v1/taxi` | 1 669 | taksi |
-| `ai_assistant` | `/api/v1/ai-assistant` | 1 141 | AI yordamchi |
+| `ai_assistant` | `/api/v1/ai-assistant` | 1 302 | AI yordamchi |
 | `cabinet_records` | — | 1 631 | kabinet yozuvlari (dual-write, codec) |
 
 ### To'lov va admin
@@ -217,9 +217,9 @@ Domen papkalari va hajmi:
 
 | Papka | Qator | Papka | Qator |
 |---|---|---|---|
-| `profiles` | 34 034⚠️ | `orders` | 5 153 |
+| `profiles` | 34 036⚠️ | `orders` | 5 153 |
 | `legacy/public` | 10 032⚠️ | `dining` | 2 323 |
-| `api` | 6 467 | `listings` | 2 860 |
+| `api` | 6 479 | `listings` | 2 860 |
 | `admin` | 3 848 | `taxi` | 2 703 |
 | `app` | 4 491 | `queues` | 1 802 |
 | `auth` | 1 738 | `education` | 4 069 |

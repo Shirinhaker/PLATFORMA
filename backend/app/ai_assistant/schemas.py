@@ -57,3 +57,22 @@ class AIDocumentDraftRead(BaseModel):
     doc_date: str
     body: str
     note: str = "Bu AI draft. Saqlashdan oldin tekshiring."
+
+
+class AIAttachment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=200)
+    data: str = Field(min_length=1, max_length=2_796_204)
+
+
+class AIDocumentTurn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: Literal["user", "assistant"]
+    text: str = Field(max_length=8000)
+
+
+class AIDocumentQuestion(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    message: str = Field(min_length=1, max_length=1000)
+    attachment: AIAttachment
+    history: list[AIDocumentTurn] = Field(default_factory=list, max_length=6)

@@ -8,6 +8,7 @@ from app.ai_assistant.schemas import (
     AIChatRequest,
     AIDocumentDraftRead,
     AIDocumentDraftRequest,
+    AIDocumentQuestion,
     AIStatusRead,
 )
 from app.ai_assistant.service import AIAssistantService
@@ -74,3 +75,23 @@ async def document_draft(
 ):
     require_business_owner(current)
     return await ai.document_draft(current.account_id, body)
+
+
+@router.post("/documents/question", response_model=AIChatAnswerRead)
+async def document_question(
+    body: AIDocumentQuestion, current: WriteAccount, ai: Service, request: Request
+):
+    require_business_owner(current)
+    redis_wrapper = request.app.state.redis
+    redis = getattr(redis_wrapper, "client", None)
+    if redis is None or callable(redis):
+        redis = redis_wrapper
+    result = await consume_rate_limit(redis, f"ai-doc:{current.account_id}", 10, 60)
+    if not result.allowed:
+        raise ApiError(
+            429,
+            "ai_rate_limited",
+            "Juda ko'p savol yuborildi. Biroz kuting.",
+            headers={"Retry-After": str(result.retry_after_seconds)},
+        )
+    return await ai.document_question(body)

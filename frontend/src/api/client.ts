@@ -51,6 +51,7 @@ import type {
   AIStatus,
   AIDocumentDraft,
   AIDocumentDraftRequest,
+  AIDocumentQuestion,
   SpecialistOfferWrite,
   SpecialistProfile,
   SpecialistProfileWrite,
@@ -260,6 +261,10 @@ export class ApiClient {
 
   sendAIChatMessage(message: string): Promise<AIChatAnswer> {
     return this.request("POST", "/api/v1/ai-assistant/chat", { message }, true);
+  }
+
+  askAIDocument(body: AIDocumentQuestion): Promise<AIChatAnswer> {
+    return this.request("POST", "/api/v1/ai-assistant/documents/question", body, true);
   }
 
   getAIStatus(): Promise<AIStatus> {

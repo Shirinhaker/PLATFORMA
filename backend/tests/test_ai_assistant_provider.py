@@ -62,3 +62,33 @@ async def test_openai_provider_keeps_v1656_robust_response_extraction():
         assert await provider.answer("system", "ikki", max_output_tokens=100) == ""
     finally:
         await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_document_payload_is_sent_without_provider_storage():
+    import json
+
+    payloads = []
+
+    async def handler(request):
+        payloads.append(json.loads(request.content))
+        return httpx.Response(200, json={"output_text": "2-sahifa"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        provider = OpenAIResponsesProvider(
+            api_key="test", model="gpt-4o-mini", client=client
+        )
+        content = [
+            {
+                "type": "input_file",
+                "filename": "x.pdf",
+                "file_data": "data:application/pdf;base64,JVBERg==",
+            },
+            {"type": "input_text", "text": "Izohla"},
+        ]
+        assert (
+            await provider.answer("system", content, max_output_tokens=100)
+            == "2-sahifa"
+        )
+    assert payloads[0]["input"][1]["content"] == content
+    assert payloads[0]["store"] is False

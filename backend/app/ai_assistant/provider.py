@@ -31,7 +31,9 @@ class OpenAIResponsesProvider:
     def enabled(self) -> bool:
         return bool(self.api_key)
 
-    async def answer(self, system: str, user: str, *, max_output_tokens: int) -> str:
+    async def answer(
+        self, system: str, user: str | list[dict], *, max_output_tokens: int
+    ) -> str:
         if not self.enabled:
             return ""
         payload = {

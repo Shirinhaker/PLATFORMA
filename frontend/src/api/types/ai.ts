@@ -42,3 +42,10 @@ export type AIDocumentDraft = {
   body: string;
   note: string;
 };
+
+export type AIAttachment = { name: string; data: string };
+export type AIDocumentQuestion = {
+  message: string;
+  attachment: AIAttachment;
+  history: { role: "user" | "assistant"; text: string }[];
+};

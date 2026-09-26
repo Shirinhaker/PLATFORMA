@@ -95,6 +95,8 @@ export type BusinessProfileApi = Pick<
       | "getAIChatHistory"
       | "sendAIChatMessage"
       | "getAIStatus"
+      | "askAIDocument"
+      | "generateAIDocumentDraft"
       | "getStatistics"
       | "getStatisticsNav"
       | "getEducationStatistics"
